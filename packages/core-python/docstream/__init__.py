@@ -16,12 +16,17 @@ Basic usage:
 from __future__ import annotations
 
 __version__ = "0.2.0"
-__all__ = ["convert", "stream_convert", "extract", "generate", "ConversionResult", "ExtractionError"]
+__all__ = [
+    "convert", "stream_convert", "extract", "generate",
+    "ConversionResult", "ExtractionError",
+    "Pipeline", "PipelineStage", "LatexExtractionStage",
+]
 
 import logging
 from pathlib import Path
 
 from docstream.exceptions import ExtractionError
+from docstream.pipeline import LatexExtractionStage, Pipeline, PipelineStage
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +83,11 @@ def convert(
     2. AI fills LaTeX template skeleton with content
     3. XeLaTeX compiles LaTeX to PDF
 
+    Internally this creates a :class:`Pipeline` with a single
+    :class:`LatexExtractionStage` and runs it.  You can also
+    construct custom pipelines with additional stages (see
+    ``docstream.plugins``).
+
     Args:
         pdf_path: Path to the input PDF file
         template: 'report' or 'ieee' (default: 'report')
@@ -93,81 +103,36 @@ def convert(
             print(f"LaTeX: {result.tex_path}")
             print(f"PDF: {result.pdf_path}")
     """
-    import shutil
-    import time
+    import asyncio
 
-    from docstream.core.compiler import compile_latex
-    from docstream.core.extractor_v2 import extract_structured
-    from docstream.core.generator import generate_latex
-    from docstream.exceptions import DocstreamError
+    from docstream.pipeline import LatexExtractionStage, Pipeline
 
-    start_time = time.time()
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    image_dir = output_dir / "images"
+    async def _run() -> dict:
+        pipeline = Pipeline([LatexExtractionStage()])
+        return await pipeline.run({
+            "file_path": str(pdf_path),
+            "template": template,
+            "output_dir": str(output_dir),
+            "ai_provider": ai_provider,
+        })
 
-    try:
-        # Step 1: Extract text and images
-        logger.info(f"Step 1/3: Extracting from {Path(pdf_path).name}")
-        document = extract_structured(pdf_path, image_output_dir=image_dir)
-        n_images = len(document.get("images", []))
-        logger.info(f"Extracted {len(document['structure'])} blocks and {n_images} images")
+    data = asyncio.run(_run())
 
-        # Step 2: Generate LaTeX
-        logger.info(f"Step 2/3: Generating LaTeX ({template} template)")
-        latex = generate_latex(
-            document,
-            template,
-            ai_provider,
-            image_dir=image_dir,
-        )
-        logger.info(f"Generated {len(latex)} chars of LaTeX")
-
-        # Step 3: Compile with images
-        logger.info("Step 3/3: Compiling with XeLaTeX")
-        tex_path, pdf_path_out = compile_latex(
-            latex,
-            output_dir,
-            image_dir=image_dir if n_images > 0 else None,
-        )
-
-        # Copy images to output dir root for easy access
-        if n_images > 0 and image_dir.exists():
-            for img_file in image_dir.glob("fig_p*.*"):
-                dest = output_dir / img_file.name
-                if not dest.exists():
-                    shutil.copy2(str(img_file), str(dest))
-
-        processing_time = round(time.time() - start_time, 1)
-        logger.info(f"Conversion complete in {processing_time}s")
-
+    if data.get("success"):
         return ConversionResult(
             success=True,
-            tex_path=tex_path,
-            pdf_path=pdf_path_out,
-            processing_time=processing_time,
-            template_used=template,
+            tex_path=Path(data["tex_path"]),
+            pdf_path=Path(data["pdf_path"]),
+            processing_time=data["processing_time"],
+            template_used=data["template_used"],
         )
 
-    except DocstreamError as e:
-        processing_time = round(time.time() - start_time, 1)
-        logger.error(f"Conversion failed: {e}")
-        return ConversionResult(
-            success=False,
-            error=str(e),
-            processing_time=processing_time,
-            template_used=template,
-        )
-
-    except Exception as e:
-        processing_time = round(time.time() - start_time, 1)
-        logger.error(f"Unexpected error: {e}", exc_info=True)
-        return ConversionResult(
-            success=False,
-            error=f"Unexpected error: {e}",
-            processing_time=processing_time,
-            template_used=template,
-        )
+    return ConversionResult(
+        success=False,
+        error=data.get("error", "Unknown error"),
+        processing_time=data.get("processing_time", 0.0),
+        template_used=data.get("template_used", template),
+    )
 
 
 async def stream_convert(
