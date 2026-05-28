@@ -36,7 +36,8 @@ API_PIP := $(VENV_API)/bin/pip
         dev dev-api dev-web \
         test test-core test-cli test-api test-python \
         lint lint-python lint-py lint-web \
-        format format-python clean
+        format format-python \
+        docker-build docker-up docker-down clean
 
 # Default target — show help.
 help:
@@ -149,6 +150,19 @@ format:
 	cd $(CORE_DIR) && ../../$(VENV_CLI)/bin/ruff format .
 	cd $(CLI_DIR)  && ./.venv/bin/ruff format .
 	cd $(API_DIR)  && ./.venv/bin/ruff format .
+
+# -----------------------------------------------------------------------------
+# Docker
+# -----------------------------------------------------------------------------
+
+docker-build:
+	docker-compose build
+
+docker-up:
+	docker-compose up
+
+docker-down:
+	docker-compose down
 
 # -----------------------------------------------------------------------------
 # Clean
