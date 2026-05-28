@@ -179,21 +179,35 @@ export default function ConvertPage() {
               {state.status === "streaming" && (
                 <>
                   {/* Progress bar */}
-                  <div className="w-full bg-white/[0.04] rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
                     <div
-                      className="h-full bg-blue-500 transition-all duration-300 ease-out rounded-full"
+                      className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300 ease-out rounded-full"
                       style={{ width: `${Math.round(state.progress * 100)}%` }}
                     />
                   </div>
-                  <p className="text-xs text-slate-500 text-right">
+                  <p className="text-xs text-muted-foreground text-right">
                     {Math.round(state.progress * 100)}%
                   </p>
-                  {/* LaTeX preview (typewriter effect) */}
-                  <div className="max-h-64 overflow-y-auto rounded-xl bg-black/40 border border-white/[0.06] p-4">
-                    <pre className="text-xs text-slate-300 font-mono whitespace-pre-wrap break-all leading-relaxed">
-                      {state.accumulated}
-                      <span className="inline-block w-2 h-4 bg-blue-400/70 animate-pulse ml-0.5 align-middle" />
-                    </pre>
+                  {/* Terminal-style LaTeX preview */}
+                  <div className="rounded-xl overflow-hidden border border-border shadow-lg">
+                    {/* Terminal title bar */}
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-[#1a1b26] border-b border-[#2a2b3e]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-red-500" />
+                        <span className="w-3 h-3 rounded-full bg-yellow-500" />
+                        <span className="w-3 h-3 rounded-full bg-green-500" />
+                      </div>
+                      <span className="text-xs text-[#565f89] font-mono ml-2">stream — LaTeX output</span>
+                    </div>
+                    {/* Terminal content */}
+                    <div className="max-h-72 overflow-y-auto bg-[#0d1117] p-4">
+                      <pre className="text-sm text-[#7ec8e3] font-mono whitespace-pre-wrap break-all leading-relaxed">
+                        {state.accumulated || (
+                          <span className="text-[#565f89] italic">Waiting for output...</span>
+                        )}
+                        <span className="inline-block w-2 h-4.5 bg-[#7ec8e3] align-text-bottom ml-0.5 animate-pulse" />
+                      </pre>
+                    </div>
                   </div>
                 </>
               )}
