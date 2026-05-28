@@ -6,46 +6,48 @@ on:
   pull_request:
     branches: [main]
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  lint-test:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
+          cache: 'pip'
 
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: 20
+          cache: 'npm'
           cache-dependency-path: apps/web-node/package-lock.json
 
-      - name: Install XeLaTeX
+      - name: Install Python dependencies
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y texlive-xetex texlive-latex-extra texlive-fonts-recommended
+          python -m pip install --upgrade pip
+          pip install -e ./packages/core-python
+          pip install -e ./apps/cli-python
+          pip install -e ./apps/api-python[dev]
 
-      - name: Install all dependencies
-        run: make install
+      - name: Install Node dependencies
+        run: npm ci
+        working-directory: apps/web-node
 
-      - name: Lint Python (ruff)
-        run: make lint-python
+      - name: Lint Python
+        run: ruff check .
 
-      - name: Lint Web (eslint)
-        run: make lint-web
+      - name: Test Python
+        run: pytest
 
-      - name: Test Python (core + API)
-        run: make test-python
+      - name: Lint Node
+        run: npm run lint
+        working-directory: apps/web-node
 
-      - name: Build Next.js app
+      - name: Build Node
         run: npm run build
         working-directory: apps/web-node
