@@ -1,0 +1,9 @@
+[tool.ruff]
+line-length = 120
+extend-exclude = [
+    "*.ipynb",
+    "apps/web-node/",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
