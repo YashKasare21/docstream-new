@@ -1,214 +1,151 @@
 # Contributing to DocStream
 
-Thank you for your interest in contributing! This guide covers everything you need to go from zero to a merged pull request.
+Welcome! We're thrilled you're interested in contributing to DocStream — an open-source, FOSS-only document conversion platform.
 
 ---
 
 ## Table of Contents
 
-- [Development environment setup](#development-environment-setup)
-- [Project structure](#project-structure)
-- [Running tests](#running-tests)
-- [Adding a new template](#adding-a-new-template)
-- [Code style](#code-style)
-- [Pull request checklist](#pull-request-checklist)
+- [Code of Conduct](#code-of-conduct)
+- [How to Set Up Locally](#how-to-set-up-locally)
+- [How to Run Tests](#how-to-run-tests)
+- [Code Style](#code-style)
+- [How to Submit a PR](#how-to-submit-a-pr)
+- [Project Structure](#project-structure)
 
 ---
 
-## Development Environment Setup
+## Code of Conduct
+
+This project follows the [Contributor Covenant](https://www.contributor-covenant.org/). Be respectful, inclusive, and constructive in all interactions.
+
+---
+
+## How to Set Up Locally
 
 ### Prerequisites
 
-| Tool | Install |
-|------|---------|
-| Python 3.11+ | [python.org](https://www.python.org/downloads/) |
-| uv | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| pandoc | `sudo apt install pandoc` / `brew install pandoc` |
-| texlive-xetex | `sudo apt install texlive-xetex texlive-fonts-recommended texlive-latex-extra` |
-| tesseract | `sudo apt install tesseract-ocr` / `brew install tesseract` |
+| Tool      | Minimum Version | Install                                                           |
+| --------- | --------------- | ----------------------------------------------------------------- |
+| Python    | 3.11            | [python.org](https://www.python.org/downloads/)                   |
+| Node.js   | 20              | [nodejs.org](https://nodejs.org/)                                 |
+| XeLaTeX   | —               | `sudo apt install texlive-xetex texlive-latex-extra texlive-fonts-recommended` |
+| Tesseract | —               | `sudo apt install tesseract-ocr`                                  |
 
-### Step-by-step setup
+### Quick Setup
 
 ```bash
-# 1. Fork and clone the repository
-git clone https://github.com/YashKasare21/docstream.git
-cd docstream
+git clone https://github.com/YashKasare21/docstream-new.git
+cd docstream-new
+make install
+```
 
-# 2. Create and sync the virtual environment
-uv venv
-uv sync
+`make install` creates two Python virtual environments (`apps/cli-python/.venv` and `apps/api-python/.venv`) with the core library installed editably into both, and runs `npm install` for the web frontend.
 
-# 3. Copy the example environment file
-cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY and GROQ_API_KEY
+### Run the Dev Stack
 
-# 4. Verify everything works
-make check
-# Expected: lint + typecheck + 118 tests — all passing
+```bash
+# API (port 8000) + Web (port 3000) concurrently:
+make dev
+
+# Or individually:
+make dev-api
+make dev-web
+```
+
+### Activate the CLI
+
+```bash
+source apps/cli-python/.venv/bin/activate
+docstream convert paper.pdf --template ieee --output ./out
 ```
 
 ---
 
-## Project Structure
-
-```
-docstream/
-├── core/
-│   ├── extractor.py      ← PDFExtractor (PyMuPDF + Tesseract OCR)
-│   ├── structurer.py     ← DocumentStructurer (Gemini Flash + Groq fallback)
-│   └── renderer.py       ← DocumentRenderer (Pandoc Lua writer + XeLaTeX)
-├── models/
-│   └── document.py       ← Pydantic models (DocumentAST, Block, Section, …)
-├── templates/
-│   ├── report.lua        ← Pandoc Lua writer — technical report
-│   ├── ieee.lua          ← Pandoc Lua writer — IEEE two-column
-│   └── resume.lua        ← Pandoc Lua writer — résumé/CV
-├── exceptions.py         ← Exception hierarchy
-├── cli.py                ← argparse CLI entry point
-└── __init__.py           ← Public API: convert, extract, structure, render
-tests/
-├── test_api.py
-├── test_cli.py
-├── test_extractor.py
-├── test_renderer.py
-└── test_structurer.py
-```
-
----
-
-## Running Tests
+## How to Run Tests
 
 ```bash
-# Run full test suite
+# Run all Python tests (core + CLI + API):
 make test
 
-# Run a single file
-uv run pytest tests/test_extractor.py -v
+# Run core + API tests only:
+make test-python
 
-# Run a single test
-uv run pytest tests/test_extractor.py::TestPDFExtractor::test_extracts_text -v
+# Run a single test file:
+cd apps/api-python && ./.venv/bin/pytest tests/test_convert.py -v
 
-# Run with coverage report
-uv run pytest --cov=docstream --cov-report=term-missing
-
-# Run tests inside Docker (matches CI environment exactly)
-make docker-test
-```
-
----
-
-## Adding a New Template
-
-Templates are Pandoc 3.x Lua custom writers. Here is the full process:
-
-### 1. Create the Lua file
-
-```bash
-cp docstream/templates/report.lua docstream/templates/mytheme.lua
-```
-
-### 2. Edit the Lua writer
-
-Every template must define a `Writer(doc, opts)` function that returns a LaTeX string. The minimum structure:
-
-```lua
--- mytheme.lua — My custom DocStream template
-local function preamble(meta)
-  return table.concat({
-    "\\documentclass[12pt,a4paper]{article}",
-    "\\usepackage{fontspec}",
-    -- add your packages here
-    "\\begin{document}",
-  }, "\n")
-end
-
-local function postamble()
-  return "\\end{document}\n"
-end
-
-function Writer(doc, opts)
-  local body = pandoc.write(doc, "latex", opts)
-  local meta = doc.meta
-  return preamble(meta) .. "\n" .. body .. "\n" .. postamble()
-end
-```
-
-### 3. Register the template name
-
-In `docstream/core/renderer.py`, add your template to the valid templates set:
-
-```python
-_VALID_TEMPLATES: set[str] = {"report", "ieee", "resume", "mytheme"}
-```
-
-### 4. Add a test
-
-In `tests/test_renderer.py`, add a parametrize entry:
-
-```python
-@pytest.mark.parametrize("template", ["report", "ieee", "resume", "mytheme"])
-def test_all_templates_render(template, sample_ast, tmp_path):
-    ...
-```
-
-### 5. Verify
-
-```bash
-make test
-uv run docstream templates list  # should now show "mytheme"
+# Run a single test:
+cd apps/api-python && ./.venv/bin/pytest tests/test_convert.py::test_health_endpoint_returns_ok -v
 ```
 
 ---
 
 ## Code Style
 
-DocStream uses `ruff` for linting and formatting.
+DocStream uses **Ruff** for Python and **Prettier + ESLint** for JavaScript/TypeScript.
 
 ```bash
-# Check for issues
-make lint
+# Python lint + format
+make lint-python
+make format-python
 
-# Auto-fix all fixable issues
-make format
+# Web lint + format
+make lint-web
+npx prettier --write .   # inside apps/web-node
 ```
 
-Key rules enforced:
-- **E/W** — pycodestyle errors and warnings
-- **F** — pyflakes (unused imports, undefined names)
-- **I** — isort (import order)
-- **N** — pep8-naming (snake_case functions, PascalCase classes)
-- **UP** — pyupgrade (modern Python syntax)
+**Python rules** (enforced by Ruff):
+- `E` / `W` — pycodestyle
+- `F` — pyflakes (unused imports, undefined names)
+- `I` — isort (import ordering)
+- Line length: **120 characters**
 
-Line length limit: **100 characters** (enforced by formatter, not by error).
+**TypeScript rules** (enforced by ESLint):
+- Strict mode — no `any` without justification
+- All component props must have explicit interfaces
+- No unused imports
 
 ---
 
-## Pull Request Checklist
+## How to Submit a PR
 
-Before opening a PR, confirm every item:
-
-- [ ] `make lint` passes with zero warnings
-- [ ] `make typecheck` passes (mypy strict=false)
-- [ ] `make test` passes — **118+ tests, 0 failures**
-- [ ] New code has tests (aim for > 90% coverage on changed files)
-- [ ] `CHANGELOG.md` updated under `## [Unreleased]`
-- [ ] Docstrings added for any new public function or class
-- [ ] PR title follows: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, or `chore:` prefix
-- [ ] Branch targets `dev`, not `main` directly
+1. **Fork** the repository and create your branch from `main`:
+   ```bash
+   git checkout -b feat/my-feature
+   ```
+2. **Make your changes** — keep them focused and atomic.
+3. **Run all checks** locally:
+   ```bash
+   make test-python
+   make lint-python
+   make lint-web
+   ```
+4. **Commit** using conventional commits:
+   ```
+   feat: add support for DOCX output
+   fix: handle missing API key gracefully
+   docs: update API reference
+   ```
+5. **Push** and open a Pull Request against `main`.
+6. In the PR description, fill out the template — describe what changed, how it was tested, and link any related issues.
+7. A maintainer will review your PR. CI must pass before merge.
 
 ---
 
-## Branch Naming
+## Project Structure
 
 ```
-feat/short-description     ← new feature
-fix/short-description      ← bug fix
-docs/short-description     ← documentation only
-refactor/short-description ← internal cleanup
+docstream-new/
+├── packages/
+│   └── core-python/       # Shared library — the conversion engine
+│       ├── docstream/     # Importable as `import docstream`
+│       └── tests/
+├── apps/
+│   ├── cli-python/        # Terminal CLI
+│   ├── api-python/        # FastAPI backend
+│   └── web-node/          # Next.js 16 frontend
+├── docker/                # Dockerfiles
+├── docs/                  # Documentation
+├── Makefile               # Project orchestrator
+└── README.md
 ```
-
----
-
-## Code of Conduct
-
-Be respectful, inclusive, and constructive in all interactions. This project follows the [Contributor Covenant](https://www.contributor-covenant.org/).

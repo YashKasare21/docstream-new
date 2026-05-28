@@ -1,0 +1,79 @@
+name: Bug Report
+description: File a bug report to help us improve DocStream
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+      placeholder: The `docstream convert` command crashes when I pass a PDF with...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Run `docstream convert paper.pdf --template ieee`
+        2. See error "AttributeError: ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen instead?
+      placeholder: The PDF should be converted to LaTeX without errors.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: context
+    attributes:
+      label: Component
+      description: Which part of the project does this affect?
+      options:
+        - CLI (`apps/cli-python`)
+        - API / Backend (`apps/api-python`)
+        - Web App / Frontend (`apps/web-node`)
+        - Core Library (`packages/core-python`)
+        - Other / Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: What OS are you running?
+      placeholder: Ubuntu 24.04 / macOS 15 / Windows 11
+    validations:
+      required: false
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      description: What Python version are you using?
+      placeholder: 3.11.9
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output / Traceback
+      description: Please copy and paste any relevant log output or tracebacks.
+      render: shell
+    validations:
+      required: false

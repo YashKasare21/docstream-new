@@ -2,78 +2,61 @@
 
 > AI-powered document conversion (PDF → LaTeX → PDF) — open source, FOSS-only stack.
 
+[![CI Status](https://github.com/YashKasare21/docstream-new/actions/workflows/ci.yml/badge.svg)](https://github.com/YashKasare21/docstream-new/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![Next.js](https://img.shields.io/badge/next.js-16-black)](https://nextjs.org/)
-[![Status](https://img.shields.io/badge/status-active%20development-orange)]()
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 
-> ⚠️ **Active development.** APIs, paths, and packaging are still moving — pin a commit if you depend on this.
-
----
-
-## What is DocStream?
-
-DocStream converts documents (PDF, DOCX, PPTX, images, Markdown) into publication-quality **LaTeX**
-using a fallback chain of AI providers (Gemini → Groq → NVIDIA NIM → Ollama), then compiles them
-with XeLaTeX. It ships as:
-
-- A **Python library** (`docstream-core`) — the actual conversion engine
-- A **CLI** (`docstream`) — for terminal use and scripts
-- A **FastAPI backend** — exposes the engine as an HTTP service
-- A **Next.js 16 web frontend** — the user-facing app
+> ⚠️ **Active development.** APIs, paths, and packaging are still evolving — pin a commit if you depend on this.
 
 ---
 
-## 🏛️ Repository structure
+## Features
 
-This is a **hybrid monorepo** — Python packages glued together with local-path installs, plus a
-standalone Next.js app. No Nx, Turborepo, Pants, or Bazel — just standard tooling and a `Makefile`.
+- **Multi-format input** — PDF, DOCX, PPTX, images (PNG/JPG), Markdown, plain text
+- **AI-powered LaTeX generation** — fallback chain of AI providers (Gemini → Groq → Ollama)
+- **Professional templates** — Report, IEEE, Resume, and more
+- **XeLaTeX compilation** — produces publication-quality PDF output
+- **REST API** — FastAPI backend for HTTP access
+- **Web UI** — Next.js 16 frontend with drag-and-drop upload
+- **CLI tool** — terminal-first workflow for scripts and automation
 
-```
-docstream-new/
-├── packages/
-│   └── core-python/          # Shared library (docstream)
-│       ├── pyproject.toml    # name = "docstream-core"
-│       ├── docstream/        # Importable as `import docstream`
-│       └── tests/
-├── apps/
-│   ├── cli-python/           # Terminal interface
-│   │   ├── pyproject.toml    # depends on docstream-core (local path)
-│   │   ├── docstream_cli/
-│   │   └── tests/
-│   ├── api-python/           # FastAPI backend
-│   │   ├── pyproject.toml    # depends on docstream-core (local path)
-│   │   ├── docstream_api/
-│   │   └── tests/
-│   └── web-node/             # Next.js 16 frontend
-│       ├── package.json
-│       └── src/
-├── docker/                   # Dockerfiles
-├── docs/                     # Project documentation
-├── Makefile                  # The orchestrator
-├── LICENSE                   # MIT
-└── README.md
+---
+
+## Architecture
+
+```mermaid
+graph TD
+    CLI["CLI (apps/cli-python)"] --> Core["DocStream Core (packages/core-python)"]
+    API["FastAPI (apps/api-python)"] --> Core
+    Web["Next.js UI (apps/web-node)"] -->|"HTTP /api/v2"| API
+    Core --> AI["AI Providers<br/>Gemini · Groq · Ollama"]
+    Core --> XeLaTeX["XeLaTeX Compiler"]
+    Core --> OCR["Tesseract OCR"]
+
+    style CLI fill:#1e293b,stroke:#3b82f6,color:#f8fafc
+    style API fill:#1e293b,stroke:#3b82f6,color:#f8fafc
+    style Web fill:#1e293b,stroke:#3b82f6,color:#f8fafc
+    style Core fill:#1e40af,stroke:#3b82f6,color:#f8fafc,stroke-width:3px
+    style AI fill:#1e293b,stroke:#94a3b8,color:#94a3b8
+    style XeLaTeX fill:#1e293b,stroke:#94a3b8,color:#94a3b8
+    style OCR fill:#1e293b,stroke:#94a3b8,color:#94a3b8
 ```
 
-### Why this layout?
-
-- **Standard Python packaging** — `pip install -e .` with local-path dependencies, no custom publishing.
-- **Zero friction for Next.js** — the web app stays in its own Node environment and only talks to the
-  API over HTTP. It doesn't need to know Python exists.
-- **Make is the glue** — contributors run `make install` and `make dev`, that's it.
-
 ---
 
-## 🚀 Quick start
+## Quick Start
 
 ### Prerequisites
 
 - Python **3.11+**
-- Node.js **20+** with `npm`
-- XeLaTeX (for compilation): `sudo apt install texlive-xetex texlive-latex-extra texlive-fonts-recommended`
-- An API key for at least one AI provider (Gemini recommended — free tier, 1500 req/day)
+- Node.js **20+**
+- XeLaTeX: `sudo apt install texlive-xetex texlive-latex-extra texlive-fonts-recommended`
+- An API key for at least one AI provider (Gemini recommended — [free tier](https://aistudio.google.com/))
 
-### Install everything
+### Install & Run
 
 ```bash
 git clone https://github.com/YashKasare21/docstream-new.git
@@ -81,19 +64,21 @@ cd docstream-new
 make install
 ```
 
-This creates two Python venvs (`apps/cli-python/.venv`, `apps/api-python/.venv`) with the core
-library installed editably into both, and runs `npm install` for the web app.
-
-### Run the dev stack
-
 ```bash
-# In one terminal — runs both API (port 8000) and Web (port 3000):
+# Start API + Web (concurrent):
 make dev
-
-# Or run them individually:
-make dev-api   # FastAPI backend at http://localhost:8000
-make dev-web   # Next.js frontend at http://localhost:3000
 ```
+
+| Command            | What it does                                |
+| ------------------ | ------------------------------------------- |
+| `make install`     | Set up Python venvs + npm modules           |
+| `make dev`         | Run API (8000) + Web (3000)                 |
+| `make dev-api`     | Run FastAPI backend only                    |
+| `make dev-web`     | Run Next.js frontend only                   |
+| `make test`        | Run all Python tests                        |
+| `make test-python` | Run core + API tests                        |
+| `make lint`        | Ruff (Python) + ESLint (Web)                |
+| `make format`      | Auto-format Python with Ruff                |
 
 ### Use the CLI
 
@@ -105,49 +90,62 @@ docstream templates list
 
 ---
 
-## 🔑 Configuration
+## Project Structure
 
-Create a `.env` file at the repo root (or per-app):
+```
+docstream-new/
+├── packages/
+│   └── core-python/          # Shared library — the conversion engine
+│       ├── pyproject.toml    # name = "docstream-core"
+│       ├── docstream/        # Importable as `import docstream`
+│       └── tests/
+├── apps/
+│   ├── cli-python/           # Terminal CLI
+│   │   ├── pyproject.toml    # depends on docstream-core (local path)
+│   │   └── docstream_cli/
+│   ├── api-python/           # FastAPI backend
+│   │   ├── pyproject.toml    # depends on docstream-core (local path)
+│   │   └── docstream_api/
+│   └── web-node/             # Next.js 16 frontend
+│       ├── package.json
+│       └── src/
+├── docker/                   # Dockerfiles
+├── docs/                     # Documentation
+├── Makefile                  # Project orchestrator
+├── LICENSE                   # MIT
+└── README.md
+```
+
+---
+
+## Configuration
+
+Create a `.env` file at the repo root:
 
 ```env
 GEMINI_API_KEY=your_gemini_key
-GROQ_API_KEY=your_groq_key            # optional fallback
-NVIDIA_API_KEY=your_nvidia_key        # optional fallback
-OLLAMA_BASE_URL=http://localhost:11434  # optional local fallback
-ALLOWED_ORIGINS=http://localhost:3000   # CORS for the API
+GROQ_API_KEY=your_groq_key              # optional fallback
+OLLAMA_BASE_URL=http://localhost:11434   # optional local fallback
+ALLOWED_ORIGINS=http://localhost:3000     # CORS for API
 ```
 
-All providers are optional — DocStream falls back automatically.
+All providers are optional — DocStream falls back automatically through the chain.
 
 ---
 
-## 🧪 Testing & linting
+## Contributing
 
-```bash
-make test     # Run pytest across core, cli, and api
-make lint     # Ruff (Python) + ESLint (Web)
-make format   # Auto-format Python with ruff
-make clean    # Nuke venvs and caches
-```
+We welcome all contributions! See [`CONTRIBUTING.md`](CONTRIBUTING.md) for:
 
----
+- Local development setup
+- How to run tests
+- Code style guidelines (Ruff + Prettier)
+- Pull request workflow
 
-## 📦 Per-package READMEs
-
-- [`packages/core-python/README.md`](packages/core-python/README.md) — the conversion library
-- [`apps/cli-python/README.md`](apps/cli-python/README.md) — the CLI
-- [`apps/api-python/README.md`](apps/api-python/README.md) — the FastAPI backend
-- [`apps/web-node/README.md`](apps/web-node/README.md) — the Next.js frontend
+**FOSS-only** — please don't add proprietary or paid services to the stack.
 
 ---
 
-## 🤝 Contributing
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md). All contributions welcome — the project is FOSS-only;
-please don't add proprietary or paid services to the stack.
-
----
-
-## 📄 License
+## License
 
 [MIT](LICENSE) — © 2024–2026 Yash Kasare and contributors.

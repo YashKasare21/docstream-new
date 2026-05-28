@@ -1,0 +1,59 @@
+name: Feature Request
+description: Suggest an idea or enhancement for DocStream
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please fill out the details below.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Is your feature request related to a problem? Please describe.
+      placeholder: I'm always frustrated when I have to manually [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like in as much detail as possible.
+      placeholder: It would be great if DocStream could automatically [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What alternative solutions or workarounds have you considered?
+      placeholder: I've tried using X tool but it doesn't support [...]
+    validations:
+      required: false
+
+  - type: dropdown
+    id: context
+    attributes:
+      label: Component
+      description: Which part of the project would this affect?
+      options:
+        - CLI (`apps/cli-python`)
+        - API / Backend (`apps/api-python`)
+        - Web App / Frontend (`apps/web-node`)
+        - Core Library (`packages/core-python`)
+        - Documentation / CI
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or references here.
+    validations:
+      required: false
