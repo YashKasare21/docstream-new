@@ -91,17 +91,17 @@ install-web:
 # Dev servers
 # -----------------------------------------------------------------------------
 
-dev:
+dev: install-api install-web
 	@echo "→ Starting API + Web concurrently (Ctrl-C to stop both)..."
 	@trap 'kill 0' INT TERM EXIT; \
 		$(MAKE) -s dev-api & \
 		$(MAKE) -s dev-web & \
 		wait
 
-dev-api:
+dev-api: install-api
 	cd $(API_DIR) && ./.venv/bin/uvicorn docstream_api.main:app --reload --host 0.0.0.0 --port 8000
 
-dev-web:
+dev-web: install-web
 	cd $(WEB_DIR) && $(NPM) run dev
 
 # -----------------------------------------------------------------------------
