@@ -1,0 +1,74 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "docstream-api"
+version = "0.1.0"
+description = "DocStream FastAPI backend — HTTP service for AI-powered document conversion."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "Yash Kasare", email = "yashnkasare16@gmail.com" },
+]
+keywords = ["fastapi", "pdf", "latex", "document-conversion", "api"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+]
+# Local-path dependency: resolved at install time relative to this pyproject.toml.
+# Hatch's `allow-direct-references` lets us use a PEP 508 file:// URL so this works
+# under plain `pip install -e .` *and* under `uv pip install` without extra config.
+dependencies = [
+    "docstream-core @ {root:uri}/../../packages/core-python",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "python-multipart>=0.0.6",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "aiofiles>=23.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.25.0",
+    "httpx>=0.27.0",
+    "ruff>=0.6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/YashKasare21/docstream-new"
+Repository = "https://github.com/YashKasare21/docstream-new"
+
+# Mirror the local-path dep for uv users (uv reads this; pip ignores it).
+[tool.uv.sources]
+docstream-core = { path = "../../packages/core-python", editable = true }
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["docstream_api"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["docstream_api", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+python_files = ["test_*.py"]

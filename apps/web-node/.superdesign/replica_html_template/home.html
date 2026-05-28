@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Docstream | PDF to LaTeX Pipeline</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@600,500,700&f[]=satoshi@400,500&display=swap" rel="stylesheet">
+  <style>
+    @view-transition { navigation: auto; }
+    body {
+      font-family: 'Satoshi', sans-serif;
+      background-color: #020617;
+    }
+    h1, h2, h3 {
+      font-family: 'General Sans', sans-serif;
+    }
+    .animate-float {
+      animation: float 6s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .gradient-border {
+      position: relative;
+      background: linear-gradient(to bottom right, #1e293b, #0f172a);
+    }
+    .gradient-border::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      background: linear-gradient(to right, #3b82f6, #6366f1);
+      border-radius: inherit;
+      z-index: -1;
+      opacity: 0.3;
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen text-slate-200">
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16 items-center">
+          <div class="flex items-center gap-2">
+            <iconify-icon icon="lucide:file-code" class="text-blue-500 text-2xl"></iconify-icon>
+            <span class="font-bold text-xl tracking-tight text-white">Docstream</span>
+          </div>
+          <div class="hidden md:flex items-center gap-8">
+            <a id="nav-features" href="#" class="text-sm text-slate-400 hover:text-white transition-colors">Features</a>
+            <a id="nav-templates" href="#" class="text-sm text-slate-400 hover:text-white transition-colors">Templates</a>
+            <a id="nav-pricing" href="#" class="text-sm text-slate-400 hover:text-white transition-colors">Pricing</a>
+            <a id="nav-login" href="#" class="text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-all">Get Started</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main class="pt-24">
+      <!-- Hero Section -->
+      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-24 grid lg:grid-cols-2 gap-16 items-center">
+        <div class="space-y-8">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold uppercase tracking-wider">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+            </span>
+            Open Source · PyPI Published · MIT License
+          </div>
+          <h1 class="text-5xl lg:text-7xl font-bold text-white tracking-tight leading-[1.1]">
+            Turn PDFs into <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">Perfect LaTeX</span>
+          </h1>
+          <p class="text-xl text-slate-400 leading-relaxed max-w-xl">
+            Upload your research papers, theses, or proof-heavy documents. Our AI-powered pipeline extracts structure, formulas, and citations into publication-quality LaTeX in minutes.
+          </p>
+          <div class="flex flex-wrap gap-4">
+            <a id="cta-primary" href="#" class="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-blue-900/20">
+              Start converting free
+              <iconify-icon icon="lucide:arrow-right"></iconify-icon>
+            </a>
+            <a id="cta-secondary" href="#" class="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl transition-all border border-slate-700">
+              View demo samples
+            </a>
+          </div>
+        </div>
+
+        <!-- Animated Transformation Visual -->
+        <div class="relative flex items-center justify-center">
+          <div class="absolute inset-0 bg-blue-500/10 blur-[100px] rounded-full"></div>
+          <div class="relative w-full max-w-md aspect-square bg-slate-900/50 border border-slate-800 rounded-3xl p-8 backdrop-blur-sm overflow-hidden">
+            <!-- Transformation Animation Area -->
+            <div class="h-full flex flex-col justify-between">
+              <div class="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl animate-float">
+                <div class="flex items-center gap-3">
+                  <iconify-icon icon="lucide:file-text" class="text-red-400 text-3xl"></iconify-icon>
+                  <div>
+                    <p class="text-sm font-medium text-white">paper_draft.pdf</p>
+                    <p class="text-xs text-slate-500">2.4 MB</p>
+                  </div>
+                </div>
+                <iconify-icon icon="lucide:check-circle" class="text-green-500"></iconify-icon>
+              </div>
+
+              <div class="flex justify-center my-4">
+                <div class="flex flex-col items-center gap-2">
+                  <div class="h-12 w-[1px] bg-gradient-to-b from-blue-500 to-transparent"></div>
+                  <iconify-icon icon="lucide:zap" class="text-blue-400 text-2xl animate-pulse"></iconify-icon>
+                  <div class="h-12 w-[1px] bg-gradient-to-t from-indigo-500 to-transparent"></div>
+                </div>
+              </div>
+
+              <div class="p-4 bg-slate-800/50 rounded-xl border border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center gap-3">
+                    <iconify-icon icon="lucide:file-code-2" class="text-blue-400 text-3xl"></iconify-icon>
+                    <p class="text-sm font-medium text-white">main.tex</p>
+                  </div>
+                  <span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase">Ready</span>
+                </div>
+                <div class="space-y-1.5 opacity-60 font-mono text-[10px]">
+                  <div class="flex gap-2 text-slate-400"><span class="text-blue-400">\documentclass</span>{article}</div>
+                  <div class="flex gap-2 text-slate-400"><span class="text-blue-400">\usepackage</span>{amsmath}</div>
+                  <div class="flex gap-2 text-slate-400"><span class="text-blue-400">\begin</span>{document}</div>
+                  <div class="flex gap-2 text-slate-300 pl-4">$E = mc^2$</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Drag & Drop Area -->
+      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+        <div class="relative p-12 lg:p-16 bg-slate-900/40 rounded-[2.5rem] border-2 border-dashed border-slate-800 hover:border-blue-500/50 hover:bg-slate-900/60 transition-all group">
+          <div class="flex flex-col items-center text-center space-y-4">
+            <div class="w-20 h-20 rounded-2xl bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <iconify-icon icon="lucide:cloud-upload" class="text-4xl text-blue-500"></iconify-icon>
+            </div>
+            <div>
+              <h3 class="text-2xl font-semibold text-white">Drop your PDF here</h3>
+              <p class="text-slate-400 mt-2">or click to browse your local files</p>
+            </div>
+            <div class="pt-4 flex items-center gap-6 text-slate-500 text-sm">
+              <span class="flex items-center gap-1"><iconify-icon icon="lucide:shield-check"></iconify-icon> Private & Secure</span>
+              <span class="flex items-center gap-1"><iconify-icon icon="lucide:file-stack"></iconify-icon> Batch Processing</span>
+              <span class="flex items-center gap-1"><iconify-icon icon="lucide:layout-template"></iconify-icon> 3 Templates (Report / IEEE / Resume)</span>
+            </div>
+          </div>
+          <input type="file" class="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf" />
+        </div>
+      </section>
+
+      <!-- Features Grid -->
+      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+        <div class="grid md:grid-cols-3 gap-8">
+          <!-- Card 1 -->
+          <div class="p-8 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-slate-700 transition-colors group">
+            <div class="w-12 h-12 rounded-lg bg-indigo-500/10 flex items-center justify-center mb-6 group-hover:bg-indigo-500/20 transition-colors">
+              <iconify-icon icon="lucide:cpu" class="text-2xl text-indigo-400"></iconify-icon>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-3">AI Semantic Extraction</h3>
+            <p class="text-slate-400 leading-relaxed">
+              Beyond basic OCR. We understand tables, math environments, and citations using Gemini-powered deep parsing.
+            </p>
+          </div>
+          
+          <!-- Card 2 -->
+          <div class="p-8 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-slate-700 transition-colors group">
+            <div class="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center mb-6 group-hover:bg-blue-500/20 transition-colors">
+              <iconify-icon icon="lucide:layout" class="text-2xl text-blue-400"></iconify-icon>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-3">Template Targeting</h3>
+            <p class="text-slate-400 leading-relaxed">
+              Output directly into IEEE, ACM, arXiv, or custom university formats with automatically formatted bibliographies.
+            </p>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="p-8 rounded-2xl bg-slate-900/50 border border-slate-800 hover:border-slate-700 transition-colors group">
+            <div class="w-12 h-12 rounded-lg bg-cyan-500/10 flex items-center justify-center mb-6 group-hover:bg-cyan-500/20 transition-colors">
+              <iconify-icon icon="lucide:scan-text" class="text-2xl text-cyan-400"></iconify-icon>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-3">Scanned PDF Support</h3>
+            <p class="text-slate-400 leading-relaxed">
+              Tesseract OCR kicks in automatically for image-based PDFs. Zero config.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-900 bg-slate-950 py-12">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-8">
+        <div class="flex items-center gap-2">
+          <iconify-icon icon="lucide:file-code" class="text-blue-500 text-xl"></iconify-icon>
+          <span class="font-bold text-white">Docstream</span>
+          <span class="text-slate-600 text-sm ml-4">© 2024 Docstream AI. All rights reserved.</span>
+        </div>
+        <div class="flex gap-8">
+          <a id="footer-terms" href="#" class="text-sm text-slate-500 hover:text-white">Terms</a>
+          <a id="footer-privacy" href="#" class="text-sm text-slate-500 hover:text-white">Privacy</a>
+          <a id="footer-github" href="#" class="text-sm text-slate-500 hover:text-white">
+            <iconify-icon icon="lucide:github" class="text-lg"></iconify-icon>
+          </a>
+        </div>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
