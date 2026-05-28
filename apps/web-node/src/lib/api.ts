@@ -72,6 +72,93 @@ export async function checkHealth(): Promise<boolean> {
   return false;
 }
 
+export interface StreamEvent {
+  chunk: string;
+  progress: number;
+  step: string;
+  tex_url?: string;
+  pdf_url?: string;
+  processing_time?: number;
+  template_used?: string;
+  error?: string;
+}
+
+export async function streamDocument(
+  file: File,
+  template: string,
+  onChunk: (event: StreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<ConvertResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("template", template);
+
+  const response = await fetch(`${API_BASE_URL}/api/v2/stream`, {
+    method: "POST",
+    body: formData,
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error("Response body is not readable");
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: ConvertResult | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data: ")) continue;
+
+      const payload = trimmed.slice(6);
+      if (payload === "[DONE]") continue;
+
+      try {
+        const event: StreamEvent = JSON.parse(payload);
+        onChunk(event);
+
+        if (event.step === "done") {
+          result = {
+            success: true,
+            job_id: "",
+            tex_url: event.tex_url ?? "",
+            pdf_url: event.pdf_url ?? "",
+            processing_time: event.processing_time ?? 0,
+            template_used: event.template_used,
+            document_type: undefined,
+            quality_score: undefined,
+          };
+        } else if (event.step === "error") {
+          throw new Error(event.chunk);
+        }
+      } catch {
+        // skip malformed JSON lines
+      }
+    }
+  }
+
+  if (!result) {
+    throw new Error("Stream ended without completion signal");
+  }
+
+  return result;
+}
+
 export async function getFormats(): Promise<string[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/api/v2/formats`);

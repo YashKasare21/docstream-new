@@ -78,3 +78,45 @@ async def convert_document(
             "job_id": job_id,
             "error": ("An unexpected error occurred. Please try again."),
         }
+
+
+async def stream_document(
+    file_path: Path,
+    template: str,
+    job_id: str,
+    output_dir: Path,
+):
+    """
+    Convert a document and stream the result chunk-by-chunk via SSE.
+
+    Wraps ``docstream.stream_convert``, mapping output paths to
+    download URLs so the frontend can link to the generated files.
+
+    Yields JSON-serialisable dicts with ``chunk``, ``progress``, and
+    ``step`` keys suitable for ``data: {...}\n\n`` SSE framing.
+    """
+
+    import docstream
+
+    logger.info(f"[{job_id}] Starting streaming conversion: file={file_path.name} template={template}")
+
+    try:
+        async for event in docstream.stream_convert(
+            str(file_path),
+            template=template,
+            output_dir=str(output_dir),
+        ):
+            if event.get("step") == "done":
+                tex_url = f"/api/v2/files/{job_id}/{Path(event['tex_url']).name}" if event.get("tex_url") else None
+                pdf_url = f"/api/v2/files/{job_id}/{Path(event['pdf_url']).name}" if event.get("pdf_url") else None
+                event["tex_url"] = tex_url
+                event["pdf_url"] = pdf_url
+            yield event
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Streaming error: {e}", exc_info=True)
+        yield {
+            "chunk": f"Error: {e}",
+            "progress": 1.0,
+            "step": "error",
+        }

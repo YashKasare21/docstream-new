@@ -2,17 +2,19 @@
 Conversion endpoints — PDF to LaTeX via docstream v2.
 """
 
+import json
 import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from docstream_api.models.schemas import ConvertResponse
 from docstream_api.services.converter import (
     MAX_FILE_SIZE_MB,
     VALID_TEMPLATES,
     convert_document,
+    stream_document,
 )
 
 router = APIRouter()
@@ -88,6 +90,84 @@ async def convert_v2(
     # Run conversion
     result = await convert_document(file_path, template, job_id, output_dir)
     return ConvertResponse(**result)
+
+
+@router.post(
+    "/api/v2/stream",
+    summary="Convert document with real-time SSE streaming",
+)
+async def stream_v2(
+    file: UploadFile = File(...),
+    template: str = Form(default="report"),
+):
+    """
+    Convert an uploaded document and stream the LaTeX output
+    chunk-by-chunk via Server-Sent Events.
+
+    Returns a ``StreamingResponse`` with ``media_type="text/event-stream"``.
+    Each event is a JSON payload following the SSE protocol:
+
+        data: {"chunk": "...", "progress": 0.5}\n\n
+
+    The final event carries ``step="done"`` with download URLs.
+    """
+    job_id = str(uuid.uuid4())
+
+    if template not in VALID_TEMPLATES:
+        error = json.dumps({
+            "chunk": f"Unknown template '{template}'. Supported: {', '.join(sorted(VALID_TEMPLATES))}",
+            "progress": 1.0,
+            "step": "error",
+        })
+        return StreamingResponse(
+            iter([f"data: {error}\n\n"]),
+            media_type="text/event-stream",
+        )
+
+    filename = file.filename or "document.pdf"
+    ext = Path(filename).suffix.lower()
+    if ext not in SUPPORTED_EXTENSIONS:
+        error = json.dumps({
+            "chunk": f"Unsupported file type: {ext}",
+            "progress": 1.0,
+            "step": "error",
+        })
+        return StreamingResponse(
+            iter([f"data: {error}\n\n"]),
+            media_type="text/event-stream",
+        )
+
+    content = await file.read()
+    size_mb = len(content) / (1024 * 1024)
+    if size_mb > MAX_FILE_SIZE_MB:
+        error = json.dumps({
+            "chunk": f"File too large: {size_mb:.1f} MB. Maximum is {MAX_FILE_SIZE_MB} MB.",
+            "progress": 1.0,
+            "step": "error",
+        })
+        return StreamingResponse(
+            iter([f"data: {error}\n\n"]),
+            media_type="text/event-stream",
+        )
+
+    job_dir = Path(f"/tmp/docstream/{job_id}")
+    input_dir = job_dir / "input"
+    output_dir = job_dir / "output"
+    input_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    file_path = input_dir / filename
+    file_path.write_bytes(content)
+
+    async def event_stream():
+        async for event in stream_document(file_path, template, job_id, output_dir):
+            payload = json.dumps(event)
+            yield f"data: {payload}\n\n"
+            if event.get("step") in ("done", "error"):
+                yield "data: [DONE]\n\n"
+                return
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @router.get(

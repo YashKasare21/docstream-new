@@ -16,7 +16,7 @@ Basic usage:
 from __future__ import annotations
 
 __version__ = "0.2.0"
-__all__ = ["convert", "extract", "generate", "ConversionResult", "ExtractionError"]
+__all__ = ["convert", "stream_convert", "extract", "generate", "ConversionResult", "ExtractionError"]
 
 import logging
 from pathlib import Path
@@ -168,6 +168,86 @@ def convert(
             processing_time=processing_time,
             template_used=template,
         )
+
+
+async def stream_convert(
+    pdf_path: str | Path,
+    template: str = "report",
+    output_dir: str | Path = "./docstream_output",
+    ai_provider=None,
+):
+    """
+    Convert a PDF to LaTeX and yield the result chunk by chunk.
+
+    Runs :func:`convert` in a thread pool (the underlying library is
+    synchronous), then reads the generated ``.tex`` file and yields
+    its content line-by-line as an async generator — suitable for
+    Server-Sent Events or other streaming transports.
+
+    Each yielded dict has the shape::
+
+        {"chunk": str, "progress": float, "step": str}
+
+    The final yield includes ``tex_url``, ``pdf_url``, and
+    ``processing_time`` alongside ``step="done"``.
+    """
+    import asyncio
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    yield {"chunk": "Extracting document content...\n", "progress": 0.0, "step": "extract"}
+    await asyncio.sleep(0.05)
+
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        None,
+        lambda: convert(
+            pdf_path,
+            template=template,
+            output_dir=output_dir,
+            ai_provider=ai_provider,
+        ),
+    )
+
+    if not result.success:
+        yield {
+            "chunk": f"Error: {result.error}",
+            "progress": 1.0,
+            "step": "error",
+        }
+        return
+
+    yield {
+        "chunk": f"Conversion complete in {result.processing_time:.1f}s — streaming output...\n",
+        "progress": 0.35,
+        "step": "stream",
+    }
+    await asyncio.sleep(0.05)
+
+    if result.tex_path and result.tex_path.exists():
+        text = result.tex_path.read_text(encoding="utf-8")
+        lines = text.split("\n")
+        total = len(lines)
+
+        for i, line in enumerate(lines):
+            progress = 0.35 + 0.60 * (i + 1) / max(total, 1)
+            yield {
+                "chunk": line + "\n",
+                "progress": round(progress, 4),
+                "step": "stream",
+            }
+            await asyncio.sleep(0.01)
+
+    yield {
+        "chunk": "",
+        "progress": 1.0,
+        "step": "done",
+        "tex_url": str(result.tex_path) if result.tex_path else None,
+        "pdf_url": str(result.pdf_path) if result.pdf_path else None,
+        "processing_time": result.processing_time,
+        "template_used": template,
+    }
 
 
 def extract(pdf_path: str | Path) -> dict:

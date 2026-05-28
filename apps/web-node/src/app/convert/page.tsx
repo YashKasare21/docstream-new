@@ -9,13 +9,14 @@ import ProgressTracker from "@/components/convert/ProgressTracker";
 import ErrorCard from "@/components/convert/ErrorCard";
 import ResultCard from "@/components/convert/ResultCard";
 import FormatSelector, { FORMAT_OPTIONS } from "@/components/convert/FormatSelector";
-import { convertDocument, checkHealth, type ConvertResult } from "@/lib/api";
+import { convertDocument, checkHealth, streamDocument, type ConvertResult, type StreamEvent } from "@/lib/api";
 
 // ── State machine ──────────────────────────────────────────────────────────────
 type State =
   | { status: "idle" }
   | { status: "file_selected"; file: File }
   | { status: "processing"; file: File; template: string }
+  | { status: "streaming"; file: File; template: string; accumulated: string; progress: number }
   | { status: "complete"; result: ConvertResult }
   | { status: "error"; message: string };
 
@@ -23,6 +24,7 @@ type Action =
   | { type: "SELECT_FILE"; file: File }
   | { type: "REMOVE_FILE" }
   | { type: "START_PROCESSING"; template: string }
+  | { type: "STREAM_CHUNK"; chunk: string; progress: number }
   | { type: "COMPLETE"; result: ConvertResult }
   | { type: "FAIL"; message: string }
   | { type: "RESET" };
@@ -36,6 +38,17 @@ function reducer(state: State, action: Action): State {
     case "START_PROCESSING":
       if (state.status !== "file_selected") return state;
       return { status: "processing", file: state.file, template: action.template };
+    case "STREAM_CHUNK": {
+      if (state.status !== "processing" && state.status !== "streaming") return state;
+      const prevAccumulated = state.status === "streaming" ? state.accumulated : "";
+      return {
+        status: "streaming",
+        file: state.file,
+        template: state.template,
+        accumulated: prevAccumulated + action.chunk,
+        progress: action.progress,
+      };
+    }
     case "COMPLETE":
       return { status: "complete", result: action.result };
     case "FAIL":
@@ -66,7 +79,13 @@ export default function ConvertPage() {
     dispatch({ type: "START_PROCESSING", template });
 
     try {
-      const result = await convertDocument(state.file, template);
+      const result = await streamDocument(
+        state.file,
+        template,
+        (event: StreamEvent) => {
+          dispatch({ type: "STREAM_CHUNK", chunk: event.chunk, progress: event.progress });
+        },
+      );
       dispatch({ type: "COMPLETE", result });
     } catch (err) {
       dispatch({
@@ -153,8 +172,33 @@ export default function ConvertPage() {
             </>
           )}
 
-          {/* Processing */}
-          {state.status === "processing" && <ProgressTracker />}
+          {/* Processing / Streaming */}
+          {(state.status === "processing" || state.status === "streaming") && (
+            <div className="space-y-4">
+              <ProgressTracker />
+              {state.status === "streaming" && (
+                <>
+                  {/* Progress bar */}
+                  <div className="w-full bg-white/[0.04] rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500 transition-all duration-300 ease-out rounded-full"
+                      style={{ width: `${Math.round(state.progress * 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500 text-right">
+                    {Math.round(state.progress * 100)}%
+                  </p>
+                  {/* LaTeX preview (typewriter effect) */}
+                  <div className="max-h-64 overflow-y-auto rounded-xl bg-black/40 border border-white/[0.06] p-4">
+                    <pre className="text-xs text-slate-300 font-mono whitespace-pre-wrap break-all leading-relaxed">
+                      {state.accumulated}
+                      <span className="inline-block w-2 h-4 bg-blue-400/70 animate-pulse ml-0.5 align-middle" />
+                    </pre>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Complete */}
           {state.status === "complete" && (
