@@ -9,7 +9,7 @@ import ProgressTracker from "@/components/convert/ProgressTracker";
 import ErrorCard from "@/components/convert/ErrorCard";
 import ResultCard from "@/components/convert/ResultCard";
 import FormatSelector, { FORMAT_OPTIONS } from "@/components/convert/FormatSelector";
-import { convertDocument, checkHealth, streamDocument, type ConvertResult, type StreamEvent } from "@/lib/api";
+import { checkHealth, streamDocument, type ConvertResult, type StreamEvent } from "@/lib/api";
 
 // ── State machine ──────────────────────────────────────────────────────────────
 type State =

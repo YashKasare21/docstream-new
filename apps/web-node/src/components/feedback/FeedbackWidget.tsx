@@ -10,12 +10,7 @@
  * - Show confirmation on success, error message on failure
  */
 
-interface FeedbackWidgetProps {
-  /** The job_id of the completed conversion. */
-  jobId: string;
-}
-
-export default function FeedbackWidget({ jobId: _jobId }: FeedbackWidgetProps) {
+export default function FeedbackWidget() {
   return (
     <div className="text-muted text-xs text-center p-4 border border-dashed border-border rounded-lg">
       Feedback Widget — Coming in Phase 14

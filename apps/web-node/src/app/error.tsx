@@ -10,8 +10,6 @@ interface ErrorPageProps {
 
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
   useEffect(() => {
-    // Log to observability (Sentry etc.) in production
-    // eslint-disable-next-line no-console
     console.error(error);
   }, [error]);
 

@@ -2,7 +2,6 @@
 
 import { useRef, useState, useCallback } from "react";
 import { CloudUpload, FileText, CheckCircle, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 type DropZoneState = "idle" | "dragging" | "selected" | "uploading";

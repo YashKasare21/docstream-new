@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, File, Monitor, Image, Code, AlignLeft } from "lucide-react";
+import { FileText, File, Monitor, ImageIcon, Code, AlignLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
 interface FormatOption {
@@ -32,7 +32,7 @@ export const FORMAT_OPTIONS: FormatOption[] = [
   {
     ext: ".png",
     mime: "image/png",
-    icon: <Image className="w-4 h-4" />,
+    icon: <ImageIcon className="w-4 h-4" />,
     label: "Image",
   },
   {
