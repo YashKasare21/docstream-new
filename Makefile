@@ -80,6 +80,7 @@ install-api:
 	$(API_PIP) install --upgrade pip
 	$(API_PIP) install -e $(CORE_DIR)
 	$(API_PIP) install -e $(API_DIR)
+	$(API_PIP) install --force-reinstall --no-deps -e $(CORE_DIR)
 	@echo "✓ API installed."
 
 install-web:
