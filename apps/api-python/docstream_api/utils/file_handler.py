@@ -5,7 +5,6 @@ from pathlib import Path
 
 from fastapi import UploadFile
 
-
 TEMP_BASE = Path("/tmp/docstream")
 
 # PDF magic bytes: %PDF

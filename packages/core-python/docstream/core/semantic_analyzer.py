@@ -368,11 +368,7 @@ Rules:
         # Merge metadata — heuristics first, AI result overwrites
         merged_metadata: dict = {
             **heuristic_metadata,
-            **{
-                k: v
-                for k, v in ai_result.get("metadata", {}).items()
-                if k != "note" and not k.endswith("_fields")
-            },
+            **{k: v for k, v in ai_result.get("metadata", {}).items() if k != "note" and not k.endswith("_fields")},
         }
 
         word_count: int = heuristic_metadata.get("word_count", 0)

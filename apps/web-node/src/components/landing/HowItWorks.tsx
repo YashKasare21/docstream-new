@@ -14,7 +14,8 @@ const steps = [
     number: "02",
     icon: LayoutTemplate,
     title: "Choose Template",
-    description: "Select from Report, IEEE, or Resume formats. Each template is meticulously crafted.",
+    description:
+      "Select from Report, IEEE, or Resume formats. Each template is meticulously crafted.",
   },
   {
     number: "03",
@@ -34,9 +35,7 @@ export default function HowItWorks() {
         transition={{ duration: 0.5 }}
         className="text-center mb-16"
       >
-        <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
-          How it works
-        </h2>
+        <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">How it works</h2>
         <p className="text-lg text-slate-400 max-w-2xl mx-auto">
           Three simple steps to convert your PDF into publication-quality LaTeX
         </p>
@@ -71,9 +70,7 @@ export default function HowItWorks() {
 
                 {/* Content */}
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-2">
-                    {step.title}
-                  </h3>
+                  <h3 className="text-lg font-semibold text-white mb-2">{step.title}</h3>
                   <p className="text-slate-400 text-sm leading-relaxed max-w-xs mx-auto">
                     {step.description}
                   </p>

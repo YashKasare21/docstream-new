@@ -70,7 +70,7 @@ export default function DropZone({
       onFileSelect(f);
       return true;
     },
-    [onFileSelect, acceptedMime, acceptedExt, acceptedLabel]
+    [onFileSelect, acceptedMime, acceptedExt, acceptedLabel],
   );
 
   const handleDrop = useCallback(
@@ -80,7 +80,7 @@ export default function DropZone({
       const droppedFile = e.dataTransfer.files[0];
       if (droppedFile) validateFile(droppedFile);
     },
-    [validateFile]
+    [validateFile],
   );
 
   const handleChange = useCallback(
@@ -88,7 +88,7 @@ export default function DropZone({
       const selected = e.target.files?.[0];
       if (selected) validateFile(selected);
     },
-    [validateFile]
+    [validateFile],
   );
 
   const borderClass =
@@ -139,18 +139,14 @@ export default function DropZone({
                   : { duration: 3, repeat: Infinity, ease: "easeInOut" }
               }
               className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors duration-300 ${
-                currentState === "dragging"
-                  ? "bg-blue-500/20"
-                  : "bg-blue-500/10"
+                currentState === "dragging" ? "bg-blue-500/20" : "bg-blue-500/10"
               }`}
             >
               <CloudUpload className="w-14 h-14 text-blue-400" />
             </motion.div>
             <div>
               <p className="text-lg font-semibold text-white">
-                {currentState === "dragging"
-                  ? "Release to upload"
-                  : "Drop your PDF here"}
+                {currentState === "dragging" ? "Release to upload" : "Drop your PDF here"}
               </p>
               <div className="flex items-center gap-2 flex-wrap justify-center mt-3">
                 <span className="flex items-center gap-1.5 text-xs text-slate-400 bg-white/[0.04] border border-white/[0.08] rounded-full px-3 py-1">
@@ -183,9 +179,7 @@ export default function DropZone({
               <p className="text-sm font-medium text-white truncate">
                 {truncateFilename(file.name)}
               </p>
-              <p className="text-sm text-slate-400">
-                {formatFileSize(file.size)}
-              </p>
+              <p className="text-sm text-slate-400">{formatFileSize(file.size)}</p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <CheckCircle className="w-5 h-5 text-green-500" />

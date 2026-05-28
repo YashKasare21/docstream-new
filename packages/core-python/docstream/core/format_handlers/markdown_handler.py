@@ -49,9 +49,7 @@ class MarkdownHandler:
         try:
             text = file_path.read_text(encoding="utf-8")
         except UnicodeDecodeError as exc:
-            raise ExtractionError(
-                "Could not read Markdown file. Please ensure the file is UTF-8 encoded."
-            ) from exc
+            raise ExtractionError("Could not read Markdown file. Please ensure the file is UTF-8 encoded.") from exc
 
         blocks: list[Block] = []
         lines = text.splitlines()

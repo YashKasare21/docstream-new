@@ -1,28 +1,28 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { CheckCircle, Download, FileCode, Zap, RotateCcw } from 'lucide-react'
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { CheckCircle, Download, FileCode, Zap, RotateCcw } from "lucide-react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 interface ResultCardProps {
-  texUrl: string
-  pdfUrl: string
-  processingTime?: number
-  onConvertAnother: () => void
-  jobId: string
-  templateUsed?: string
-  documentType?: string
+  texUrl: string;
+  pdfUrl: string;
+  processingTime?: number;
+  onConvertAnother: () => void;
+  jobId: string;
+  templateUsed?: string;
+  documentType?: string;
 }
 
 const EMOJIS = [
-  { value: 1, emoji: '😞', label: 'Poor' },
-  { value: 2, emoji: '😐', label: 'Okay' },
-  { value: 3, emoji: '😊', label: 'Good' },
-  { value: 4, emoji: '😄', label: 'Great' },
-  { value: 5, emoji: '🤩', label: 'Amazing' },
-]
+  { value: 1, emoji: "😞", label: "Poor" },
+  { value: 2, emoji: "😐", label: "Okay" },
+  { value: 3, emoji: "😊", label: "Good" },
+  { value: 4, emoji: "😄", label: "Great" },
+  { value: 5, emoji: "🤩", label: "Amazing" },
+];
 
 export default function ResultCard({
   texUrl,
@@ -33,18 +33,18 @@ export default function ResultCard({
   templateUsed,
   documentType,
 }: ResultCardProps) {
-  const [selectedEmoji, setSelectedEmoji] = useState<number | null>(null)
-  const [comment, setComment] = useState('')
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const [selectedEmoji, setSelectedEmoji] = useState<number | null>(null);
+  const [comment, setComment] = useState("");
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleFeedbackSubmit = async () => {
-    if (!selectedEmoji || submitting) return
-    setSubmitting(true)
+    if (!selectedEmoji || submitting) return;
+    setSubmitting(true);
     try {
       await fetch(`${API_BASE}/api/v2/feedback`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           job_id: jobId,
           emoji_rating: selectedEmoji,
@@ -53,14 +53,14 @@ export default function ResultCard({
           document_type: documentType,
           processing_time: processingTime,
         }),
-      })
+      });
     } catch {
       // Silently ignore — feedback is optional
     } finally {
-      setSubmitting(false)
-      setFeedbackSubmitted(true)
+      setSubmitting(false);
+      setFeedbackSubmitted(true);
     }
-  }
+  };
 
   return (
     <motion.div
@@ -74,15 +74,13 @@ export default function ResultCard({
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 12 }}
+          transition={{ type: "spring", stiffness: 200, damping: 12 }}
           className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(34,197,94,0.15)]"
         >
           <CheckCircle className="w-8 h-8 text-green-400" />
         </motion.div>
 
-        <h2 className="text-xl font-semibold text-white mb-1">
-          Conversion Complete
-        </h2>
+        <h2 className="text-xl font-semibold text-white mb-1">Conversion Complete</h2>
 
         {processingTime !== undefined && (
           <p className="text-sm text-slate-400 flex items-center gap-1.5">
@@ -95,7 +93,7 @@ export default function ResultCard({
           <div className="flex items-center gap-3 mt-2">
             {documentType && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">
-                {documentType.replace('_', ' ')}
+                {documentType.replace("_", " ")}
               </span>
             )}
             {templateUsed && (
@@ -152,8 +150,8 @@ export default function ResultCard({
                 title={label}
                 className={`text-2xl p-2 rounded-xl transition-all duration-200 hover:scale-110 ${
                   selectedEmoji === value
-                    ? 'ring-2 ring-blue-500 bg-blue-500/10 scale-110'
-                    : 'hover:bg-white/[0.05]'
+                    ? "ring-2 ring-blue-500 bg-blue-500/10 scale-110"
+                    : "hover:bg-white/[0.05]"
                 }`}
               >
                 {emoji}
@@ -164,7 +162,7 @@ export default function ResultCard({
           {selectedEmoji && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
+              animate={{ opacity: 1, height: "auto" }}
               className="space-y-2"
             >
               <textarea
@@ -180,7 +178,7 @@ export default function ResultCard({
                 disabled={submitting}
                 className="w-full py-2 rounded-xl text-sm bg-white/[0.06] hover:bg-white/[0.10] text-slate-300 border border-white/[0.08] transition-all duration-200 disabled:opacity-50"
               >
-                {submitting ? 'Submitting...' : 'Submit feedback'}
+                {submitting ? "Submitting..." : "Submit feedback"}
               </button>
             </motion.div>
           )}
@@ -199,5 +197,5 @@ export default function ResultCard({
         Convert Another PDF
       </button>
     </motion.div>
-  )
+  );
 }

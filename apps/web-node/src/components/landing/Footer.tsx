@@ -18,9 +18,7 @@ export default function Footer() {
             <FileCode className="w-5 h-5 text-blue-500" />
             <span className="font-bold text-white">Docstream</span>
           </div>
-          <span className="text-slate-600 text-sm">
-            AI-powered PDF to LaTeX conversion
-          </span>
+          <span className="text-slate-600 text-sm">AI-powered PDF to LaTeX conversion</span>
         </div>
 
         {/* Links */}
@@ -44,14 +42,12 @@ export default function Footer() {
               >
                 {link.label}
               </Link>
-            )
+            ),
           )}
         </div>
 
         {/* Copyright */}
-        <p className="text-sm text-slate-600">
-          © 2025 Docstream. MIT License.
-        </p>
+        <p className="text-sm text-slate-600">© 2025 Docstream. MIT License.</p>
       </div>
     </footer>
   );

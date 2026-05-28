@@ -92,9 +92,7 @@ class RenderingError(DocstreamError):
 class ValidationError(DocstreamError):
     """Raised when data validation fails."""
 
-    def __init__(
-        self, message: str, field_name: str = None, value: str = None, details: str = None
-    ):
+    def __init__(self, message: str, field_name: str = None, value: str = None, details: str = None):
         """Initialize validation error.
 
         Args:
@@ -140,9 +138,7 @@ class ConfigurationError(DocstreamError):
 class APIError(DocstreamError):
     """Raised when API calls fail."""
 
-    def __init__(
-        self, message: str, api_name: str = None, status_code: int = None, details: str = None
-    ):
+    def __init__(self, message: str, api_name: str = None, status_code: int = None, details: str = None):
         """Initialize API error.
 
         Args:
@@ -211,9 +207,7 @@ class CompilationError(DocstreamError):
 class FileError(DocstreamError):
     """Raised when file operations fail."""
 
-    def __init__(
-        self, message: str, file_path: str = None, operation: str = None, details: str = None
-    ):
+    def __init__(self, message: str, file_path: str = None, operation: str = None, details: str = None):
         """Initialize file error.
 
         Args:
@@ -273,9 +267,7 @@ class TimeoutError(DocstreamError):
 class ModelError(DocstreamError):
     """Raised when AI model operations fail."""
 
-    def __init__(
-        self, message: str, model_name: str = None, model_type: str = None, details: str = None
-    ):
+    def __init__(self, message: str, model_name: str = None, model_type: str = None, details: str = None):
         """Initialize model error.
 
         Args:

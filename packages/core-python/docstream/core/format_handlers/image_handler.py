@@ -35,25 +35,20 @@ class ImageHandler:
         try:
             from PIL import Image  # Pillow
         except ImportError as exc:
-            raise ExtractionError(
-                "Pillow is required for image extraction. Install with: pip install Pillow"
-            ) from exc
+            raise ExtractionError("Pillow is required for image extraction. Install with: pip install Pillow") from exc
 
         try:
             import pytesseract
         except ImportError as exc:
             raise ExtractionError(
-                "pytesseract is required for image extraction. "
-                "Install with: pip install pytesseract"
+                "pytesseract is required for image extraction. Install with: pip install pytesseract"
             ) from exc
 
         # Open image
         try:
             img = Image.open(file_path)
         except Exception as exc:
-            raise ExtractionError(
-                "Could not open image file. Supported formats: JPG, PNG."
-            ) from exc
+            raise ExtractionError("Could not open image file. Supported formats: JPG, PNG.") from exc
 
         # Pre-process: grayscale
         img = img.convert("L")
@@ -72,8 +67,7 @@ class ImageHandler:
 
         if len(text.strip()) < 20:
             raise ExtractionError(
-                "Could not extract text from image. "
-                "The image may be too low resolution or contain no text."
+                "Could not extract text from image. The image may be too low resolution or contain no text."
             )
 
         # Split into paragraphs

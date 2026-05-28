@@ -1,9 +1,8 @@
 import io
 
 import pytest
-from fastapi.testclient import TestClient
-
 from docstream_api.main import app
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
@@ -42,7 +41,7 @@ def mock_convert_result():
         success = True
         tex_path = "/tmp/docstream/test/output/document.tex"
         pdf_path = "/tmp/docstream/test/output/document.pdf"
-        processing_time_seconds = 4.2
+        processing_time = 4.2
         error = None
 
     return MockResult()

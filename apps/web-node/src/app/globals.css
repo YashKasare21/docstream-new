@@ -7,8 +7,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,47 +48,47 @@
 }
 
 :root {
-  --color-ds-primary: #1E40AF;
-  --color-ds-accent: #3B82F6;
-  --color-ds-surface: #1E293B;
+  --color-ds-primary: #1e40af;
+  --color-ds-accent: #3b82f6;
+  --color-ds-surface: #1e293b;
   --color-ds-border: #334155;
-  --color-ds-text: #F8FAFC;
-  --color-ds-muted: #94A3B8;
-  --color-ds-bg: #0F172A;
+  --color-ds-text: #f8fafc;
+  --color-ds-muted: #94a3b8;
+  --color-ds-bg: #0f172a;
   --color-ds-bg-deep: #020617;
 
-  --background: #0F172A;
-  --foreground: #F8FAFC;
-  --card: #1E293B;
-  --card-foreground: #F8FAFC;
-  --popover: #1E293B;
-  --popover-foreground: #F8FAFC;
-  --primary: #1E40AF;
-  --primary-foreground: #F8FAFC;
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --card: #1e293b;
+  --card-foreground: #f8fafc;
+  --popover: #1e293b;
+  --popover-foreground: #f8fafc;
+  --primary: #1e40af;
+  --primary-foreground: #f8fafc;
   --secondary: #334155;
-  --secondary-foreground: #F8FAFC;
+  --secondary-foreground: #f8fafc;
   --muted: #334155;
-  --muted-foreground: #94A3B8;
-  --accent: #3B82F6;
-  --accent-foreground: #F8FAFC;
+  --muted-foreground: #94a3b8;
+  --accent: #3b82f6;
+  --accent-foreground: #f8fafc;
   --destructive: oklch(0.577 0.245 27.325);
   --border: #334155;
   --input: #334155;
-  --ring: #3B82F6;
+  --ring: #3b82f6;
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
   --radius: 0.625rem;
-  --sidebar: #0F172A;
-  --sidebar-foreground: #F8FAFC;
-  --sidebar-primary: #1E40AF;
-  --sidebar-primary-foreground: #F8FAFC;
+  --sidebar: #0f172a;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-primary: #1e40af;
+  --sidebar-primary-foreground: #f8fafc;
   --sidebar-accent: #334155;
-  --sidebar-accent-foreground: #F8FAFC;
+  --sidebar-accent-foreground: #f8fafc;
   --sidebar-border: #334155;
-  --sidebar-ring: #3B82F6;
+  --sidebar-ring: #3b82f6;
 }
 
 @layer base {
@@ -97,7 +97,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    font-family: "Inter", sans-serif;
     background-color: var(--color-ds-bg);
   }
   html {
@@ -108,13 +108,23 @@
 
 /* Custom animations */
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .animate-float {
@@ -143,15 +153,15 @@
   --glass-blur: blur(16px);
 
   /* Brand colors */
-  --blue-primary: #3B82F6;
+  --blue-primary: #3b82f6;
   --blue-glow: rgba(59, 130, 246, 0.4);
   --blue-subtle: rgba(59, 130, 246, 0.1);
-  --purple-accent: #8B5CF6;
+  --purple-accent: #8b5cf6;
   --purple-glow: rgba(139, 92, 246, 0.3);
 
   /* Text */
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
   --text-muted: #475569;
 
   /* Borders */
@@ -175,7 +185,9 @@
 body {
   background-color: var(--bg-base);
   color: var(--text-primary);
-  font-feature-settings: "rlig" 1, "calt" 1;
+  font-feature-settings:
+    "rlig" 1,
+    "calt" 1;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -185,21 +197,9 @@ body {
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(
-      ellipse 70% 60% at 15% -10%,
-      rgba(59, 130, 246, 0.18) 0%,
-      transparent 65%
-    ),
-    radial-gradient(
-      ellipse 50% 40% at 85% 110%,
-      rgba(139, 92, 246, 0.15) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      ellipse 80% 80% at 50% 50%,
-      rgba(10, 18, 40, 0.6) 0%,
-      #050810 70%
-    );
+    radial-gradient(ellipse 70% 60% at 15% -10%, rgba(59, 130, 246, 0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 40% at 85% 110%, rgba(139, 92, 246, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 80% at 50% 50%, rgba(10, 18, 40, 0.6) 0%, #050810 70%);
   pointer-events: none;
 }
 
@@ -212,17 +212,9 @@ body {
 
 /* Dot grid background */
 .dot-grid {
-  background-image: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.08) 1px,
-    transparent 1px
-  );
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
   background-size: 28px 28px;
-  mask-image: radial-gradient(
-    ellipse 80% 80% at 50% 50%,
-    black 40%,
-    transparent 100%
-  );
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
 }
 
 /* Glass card */
@@ -252,7 +244,7 @@ body {
 }
 
 .gradient-border::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: -1px;
   border-radius: inherit;
@@ -277,9 +269,15 @@ body {
 }
 
 @keyframes gradient-rotate {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* Shimmer button effect */
@@ -289,18 +287,13 @@ body {
 }
 
 .shimmer-btn::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
   width: 60%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.15),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
   transform: skewX(-20deg);
   transition: none;
 }
@@ -310,8 +303,12 @@ body {
 }
 
 @keyframes shimmer {
-  from { left: -100%; }
-  to { left: 200%; }
+  from {
+    left: -100%;
+  }
+  to {
+    left: 200%;
+  }
 }
 
 /* Glow text */
@@ -341,5 +338,5 @@ button:active:not(:disabled) {
 
 /* Code font */
 .font-mono {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
 }

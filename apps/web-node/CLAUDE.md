@@ -8,6 +8,7 @@ AI-powered document conversion system: PDFs → publication-quality LaTeX/PDF.
 Pipeline: PyMuPDF extraction → Gemini AI structuring → Pandoc + XeLaTeX rendering.
 
 **Stack:**
+
 - Frontend: Next.js (App Router), TypeScript (strict), Tailwind CSS v4, shadcn/ui, Framer Motion
 - Backend: FastAPI (Python 3.11+), `docstream` library
 - Deployment: Vercel (frontend), Railway (backend)
@@ -15,6 +16,7 @@ Pipeline: PyMuPDF extraction → Gemini AI structuring → Pandoc + XeLaTeX rend
 ## Commands
 
 ### Frontend (repo root)
+
 ```bash
 npm run dev          # dev server
 npm run build        # production build — must pass before merging
@@ -23,6 +25,7 @@ npx tsc --noEmit     # type check — zero errors allowed
 ```
 
 ### Backend (`docstream-api/`)
+
 ```bash
 source .venv/bin/activate
 uvicorn main:app --reload   # dev server
@@ -35,6 +38,7 @@ Run `npm run lint`, `npx tsc --noEmit`, and `npm run build` before finishing any
 ## Architecture
 
 **Boundary rules:**
+
 - UI/page composition → `src/app/**` and `src/components/**`
 - Frontend API client → `src/lib/api.ts` (currently has mocked conversion — verify before changing flow logic)
 - HTTP route definitions → `docstream-api/routes/**` (keep thin)
@@ -42,6 +46,7 @@ Run `npm run lint`, `npx tsc --noEmit`, and `npm run build` before finishing any
 - Pydantic schemas → `docstream-api/models/**`
 
 **Key reference files:**
+
 - `src/app/convert/page.tsx` — conversion flow/state pattern
 - `src/components/convert/DropZone.tsx` — upload UX and validation
 - `docstream-api/routes/convert.py` — API route shape and response contract
@@ -71,17 +76,17 @@ Commit format: `<type>(<scope>): <short summary>` — types: `feat`, `fix`, `doc
 
 Dark mode first — never use white backgrounds.
 
-| Token | Value | Usage |
-|---|---|---|
-| `bg-base` | `#0F172A` | Page background |
-| `bg-surface` | `#1E293B` | Cards, panels |
-| `primary` | `#1E40AF` | CTAs, active |
-| `accent` | `#3B82F6` | Highlights |
-| `border` | `#334155` | Dividers |
-| `text-primary` | `#F8FAFC` | Headings, body |
-| `text-muted` | `#94A3B8` | Captions |
-| `success` | `#22C55E` | Done states |
-| `error` | `#EF4444` | Failures |
+| Token          | Value     | Usage           |
+| -------------- | --------- | --------------- |
+| `bg-base`      | `#0F172A` | Page background |
+| `bg-surface`   | `#1E293B` | Cards, panels   |
+| `primary`      | `#1E40AF` | CTAs, active    |
+| `accent`       | `#3B82F6` | Highlights      |
+| `border`       | `#334155` | Dividers        |
+| `text-primary` | `#F8FAFC` | Headings, body  |
+| `text-muted`   | `#94A3B8` | Captions        |
+| `success`      | `#22C55E` | Done states     |
+| `error`        | `#EF4444` | Failures        |
 
 Animations: 200–300ms ease-in-out via Framer Motion; always respect `prefers-reduced-motion`. Use subtle glow (`0 0 20px rgba(59,130,246,0.15)`) instead of harsh shadows. Glass morphism (`backdrop-blur`) on overlapping layers.
 
@@ -100,6 +105,7 @@ v2 is a major upgrade adding multi-format support, semantic analysis, template-a
 **Supported input formats:** PDF, DOCX, PPTX, JPG/PNG (OCR), Markdown, plain text
 
 **6-stage pipeline:**
+
 ```
 Input File
     ↓
@@ -119,6 +125,7 @@ Output: .tex + .pdf
 ```
 
 **New library modules** (`docstream/core/`):
+
 - `format_router.py` — `FormatRouter` with `SUPPORTED_FORMATS` dict
 - `format_handlers/` — one handler class per format
 - `semantic_analyzer.py` — `DocumentType` enum, `SemanticAnalyzer`
@@ -127,18 +134,21 @@ Output: .tex + .pdf
 - `ai_provider.py` — `AIProviderChain` (Gemini → Groq → Ollama fallback)
 
 **AI fallback hierarchy:**
+
 1. Gemini 1.5 Flash (primary — 1 500 req/day free)
 2. Groq Llama 3.1 70B (fast fallback, generous free tier)
 3. Ollama (local or Colab via ngrok — no rate limits)
 4. `AIUnavailableError` raised if all fail
 
 **New v2 API endpoints** (stubs — all return 501 until implemented):
+
 - `POST /api/v2/convert` — multi-format upload, returns `job_id`
 - `GET /api/v2/preview/{job_id}` — base64 PDF for PDF.js
 - `POST /api/v2/feedback` — emoji + comment feedback
 - `GET /api/v2/formats` — supported format list
 
 **New frontend stubs:**
+
 - `src/app/preview/page.tsx` — PDF.js viewer (Phase 12)
 - `src/components/convert/FormatSelector.tsx` — format icon picker (Phase 8)
 - `src/components/feedback/FeedbackWidget.tsx` — emoji feedback (Phase 14)

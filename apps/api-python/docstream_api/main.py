@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
     init_db()
     cleanup_old_jobs()
-    result = subprocess.run(['which', 'xelatex'], capture_output=True, text=True)
+    result = subprocess.run(["which", "xelatex"], capture_output=True, text=True)
     logger.info(f"xelatex location: {result.stdout.strip()}")
     logger.info(f"xelatex found: {bool(result.stdout.strip())}")
     yield
@@ -33,11 +33,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-allowed_origins = [
-    o.strip()
-    for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
-    if o.strip()
-]
+allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,

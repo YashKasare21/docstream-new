@@ -348,9 +348,7 @@ class TemplateMatcher:
             TemplateError: If *template* is not one of the five built-in names.
         """
         if template not in TEMPLATE_SCHEMAS:
-            raise TemplateError(
-                f"Unknown template {template!r}. Available: {sorted(TEMPLATE_SCHEMAS)}"
-            )
+            raise TemplateError(f"Unknown template {template!r}. Available: {sorted(TEMPLATE_SCHEMAS)}")
 
         schema = TEMPLATE_SCHEMAS[template]
         filled_fields: dict = {}
@@ -382,8 +380,7 @@ class TemplateMatcher:
                 if tfield.required:
                     missing_required.append(tfield.name)
                     warnings.append(
-                        f"Required field '{tfield.name}' could not be filled — "
-                        f"no chunks of type {tfield.chunk_types}"
+                        f"Required field '{tfield.name}' could not be filled — no chunks of type {tfield.chunk_types}"
                     )
                 continue
 

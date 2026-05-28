@@ -1,7 +1,6 @@
 """Tests for POST /api/v2/feedback and GET /api/v2/feedback/stats."""
 
 import importlib
-import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -71,16 +70,12 @@ def test_submit_feedback_with_comment(client):
 
 
 def test_submit_invalid_rating_rejected(client):
-    resp = client.post(
-        "/api/v2/feedback", json={"job_id": "j", "emoji_rating": 6}
-    )
+    resp = client.post("/api/v2/feedback", json={"job_id": "j", "emoji_rating": 6})
     assert resp.status_code == 422
 
 
 def test_submit_invalid_rating_zero_rejected(client):
-    resp = client.post(
-        "/api/v2/feedback", json={"job_id": "j", "emoji_rating": 0}
-    )
+    resp = client.post("/api/v2/feedback", json={"job_id": "j", "emoji_rating": 0})
     assert resp.status_code == 422
 
 

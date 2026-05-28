@@ -10,17 +10,22 @@ from fastapi.responses import FileResponse
 
 from docstream_api.models.schemas import ConvertResponse
 from docstream_api.services.converter import (
-    VALID_TEMPLATES,
     MAX_FILE_SIZE_MB,
+    VALID_TEMPLATES,
     convert_document,
 )
 
 router = APIRouter()
 
 SUPPORTED_EXTENSIONS = {
-    ".pdf", ".docx", ".pptx",
-    ".png", ".jpg", ".jpeg",
-    ".md", ".txt",
+    ".pdf",
+    ".docx",
+    ".pptx",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".md",
+    ".txt",
 }
 
 
@@ -46,10 +51,7 @@ async def convert_v2(
         return ConvertResponse(
             success=False,
             job_id=job_id,
-            error=(
-                f"Unknown template '{template}'. "
-                f"Supported: {', '.join(sorted(VALID_TEMPLATES))}"
-            ),
+            error=(f"Unknown template '{template}'. Supported: {', '.join(sorted(VALID_TEMPLATES))}"),
         )
 
     # Validate extension
@@ -59,11 +61,7 @@ async def convert_v2(
         return ConvertResponse(
             success=False,
             job_id=job_id,
-            error=(
-                f"Unsupported file type: {ext}. "
-                f"Supported: "
-                f"{', '.join(sorted(SUPPORTED_EXTENSIONS))}"
-            ),
+            error=(f"Unsupported file type: {ext}. Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"),
         )
 
     # Read and validate size
@@ -73,10 +71,7 @@ async def convert_v2(
         return ConvertResponse(
             success=False,
             job_id=job_id,
-            error=(
-                f"File too large: {size_mb:.1f} MB. "
-                f"Maximum is {MAX_FILE_SIZE_MB} MB."
-            ),
+            error=(f"File too large: {size_mb:.1f} MB. Maximum is {MAX_FILE_SIZE_MB} MB."),
         )
 
     # Set up job directories
@@ -91,9 +86,7 @@ async def convert_v2(
     file_path.write_bytes(content)
 
     # Run conversion
-    result = await convert_document(
-        file_path, template, job_id, output_dir
-    )
+    result = await convert_document(file_path, template, job_id, output_dir)
     return ConvertResponse(**result)
 
 
@@ -106,6 +99,7 @@ async def serve_file(job_id: str, filename: str):
     # Security: block path traversal
     if "/" in filename or ".." in filename:
         from fastapi import HTTPException
+
         raise HTTPException(
             status_code=400,
             detail="Invalid filename.",
@@ -115,6 +109,7 @@ async def serve_file(job_id: str, filename: str):
     allowed_extensions = (".tex", ".pdf", ".png", ".jpg", ".jpeg", ".gif")
     if not any(filename.endswith(ext) for ext in allowed_extensions):
         from fastapi import HTTPException
+
         raise HTTPException(
             status_code=400,
             detail="Only .tex, .pdf, and image files are served.",
@@ -123,6 +118,7 @@ async def serve_file(job_id: str, filename: str):
     file_path = Path(f"/tmp/docstream/{job_id}/output/{filename}")
     if not file_path.exists():
         from fastapi import HTTPException
+
         raise HTTPException(
             status_code=404,
             detail="File not found. Conversion may have expired.",
@@ -151,12 +147,12 @@ async def list_formats():
     """Return list of supported input file formats."""
     return {
         "formats": [
-            {"extension": ".pdf",  "name": "PDF Document"},
+            {"extension": ".pdf", "name": "PDF Document"},
             {"extension": ".docx", "name": "Word Document"},
             {"extension": ".pptx", "name": "PowerPoint"},
-            {"extension": ".png",  "name": "PNG Image"},
-            {"extension": ".jpg",  "name": "JPEG Image"},
-            {"extension": ".md",   "name": "Markdown"},
-            {"extension": ".txt",  "name": "Plain Text"},
+            {"extension": ".png", "name": "PNG Image"},
+            {"extension": ".jpg", "name": "JPEG Image"},
+            {"extension": ".md", "name": "Markdown"},
+            {"extension": ".txt", "name": "Plain Text"},
         ]
     }

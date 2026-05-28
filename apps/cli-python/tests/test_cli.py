@@ -11,7 +11,6 @@ import json
 from unittest.mock import patch
 
 import pytest
-
 from docstream.cli import build_parser, main
 from docstream.models.document import Block, BlockType, ConversionResult
 

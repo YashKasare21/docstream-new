@@ -124,6 +124,7 @@ API docs at [http://localhost:8000/docs](http://localhost:8000/docs).
 ### Backend → Railway
 
 Configured via `railway.toml` and `nixpacks.toml`:
+
 - Builder: Nixpacks with `texlive.combined.scheme-medium`
 - `IEEEtran.cls` downloaded from CTAN at build time
 - Health check: `GET /api/health`
@@ -188,12 +189,13 @@ Convert a document to LaTeX and PDF.
 
 **Request:** `multipart/form-data`
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `file` | File | PDF file (max 20MB) |
+| Field      | Type   | Description            |
+| ---------- | ------ | ---------------------- |
+| `file`     | File   | PDF file (max 20MB)    |
 | `template` | string | `"report"` or `"ieee"` |
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -230,6 +232,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 ## 👤 Author
 
 **Yash Kasare**
+
 - GitHub: [@YashKasare21](https://github.com/YashKasare21)
 - Email: yashnkasare16@gmail.com
 - Library: [github.com/YashKasare21/docstream](https://github.com/YashKasare21/docstream)

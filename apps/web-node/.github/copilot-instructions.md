@@ -1,6 +1,7 @@
 # Project Guidelines
 
 ## Architecture
+
 - This repo has two apps:
 - Frontend in `src/` (Next.js App Router + TypeScript + Tailwind + shadcn/ui).
 - Backend in `docstream-api/` (FastAPI + docstream Python library).
@@ -12,6 +13,7 @@
 - Schemas in `docstream-api/models/**`.
 
 ## Build And Test
+
 - Frontend (run from repo root):
 - `npm run dev`
 - `npm run lint`
@@ -24,6 +26,7 @@
 - If you change frontend code, run `npm run lint` and `npm run build` before finishing.
 
 ## Conventions
+
 - Use strict TypeScript. Avoid implicit `any`.
 - Keep component files in PascalCase and utility files in camelCase.
 - Prefer typed API contracts; keep response shapes explicit.
@@ -33,11 +36,13 @@
 - Preserve existing branch discipline if doing git work: `feature/*` or `fix/*` into `dev`, never direct to `main`.
 
 ## Pitfalls
+
 - Frontend `src/lib/api.ts` currently includes mocked conversion behavior; verify whether a task expects real backend calls before changing flow logic.
 - Local backend runtime may require system tools (`pandoc`, TeX packages, `tesseract`) for full document rendering; container setup already installs them.
 - Keep changes scoped to this repo. Do not introduce breaking assumptions about the external `docstream` library from this codebase.
 
 ## Key Reference Files
+
 - `src/app/convert/page.tsx` for conversion flow/state pattern.
 - `src/components/convert/DropZone.tsx` for upload UX and validation behavior.
 - `docstream-api/routes/convert.py` for API route shape and response contract.

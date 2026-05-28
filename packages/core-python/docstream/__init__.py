@@ -16,10 +16,12 @@ Basic usage:
 from __future__ import annotations
 
 __version__ = "0.2.0"
-__all__ = ["convert", "extract", "generate", "ConversionResult"]
+__all__ = ["convert", "extract", "generate", "ConversionResult", "ExtractionError"]
 
 import logging
 from pathlib import Path
+
+from docstream.exceptions import ExtractionError
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +58,7 @@ class ConversionResult:
     def __repr__(self) -> str:
         """Return string representation of conversion result."""
         if self.success:
-            return (
-                f"ConversionResult(success=True, "
-                f"template={self.template_used!r}, "
-                f"pdf={self.pdf_path})"
-            )
+            return f"ConversionResult(success=True, template={self.template_used!r}, pdf={self.pdf_path})"
         return f"ConversionResult(success=False, error={self.error!r})"
 
 

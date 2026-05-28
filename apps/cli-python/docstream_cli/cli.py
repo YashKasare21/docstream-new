@@ -65,10 +65,7 @@ def _cmd_convert(args: argparse.Namespace) -> int:
         if result.success:
             print(f"\n  PDF   -> {result.pdf_path}")
             print(f"  LaTeX -> {result.tex_path}")
-            print(
-                f"  Template: {result.template_used}"
-                f"  |  Time: {result.processing_time_seconds:.2f}s"
-            )
+            print(f"  Template: {result.template_used}  |  Time: {result.processing_time:.2f}s")
             return 0
         else:
             print(f"\n  Error: {result.error}", file=sys.stderr)

@@ -63,9 +63,7 @@ def generate_latex(
     from docstream.exceptions import TemplateError
 
     if template not in VALID_TEMPLATES:
-        raise TemplateError(
-            f"Unknown template: '{template}'. Valid: {', '.join(sorted(VALID_TEMPLATES))}"
-        )
+        raise TemplateError(f"Unknown template: '{template}'. Valid: {', '.join(sorted(VALID_TEMPLATES))}")
 
     skeleton = _load_skeleton(template)
     instructions = _load_instructions(template)
@@ -127,17 +125,11 @@ def generate_latex(
         pre_len = len(latex)
         has_end = "\\end{document}" in latex
         bib_pos = latex.find("\\begin{thebibliography}")
-        logger.info(
-            f"Before figure insertion: latex={pre_len} chars, "
-            f"has_end_doc={has_end}, bib_pos={bib_pos}"
-        )
+        logger.info(f"Before figure insertion: latex={pre_len} chars, has_end_doc={has_end}, bib_pos={bib_pos}")
         latex = _insert_figures(latex, images, template)
         post_figs = len(re.findall(r"\\includegraphics", latex))
         post_fbox = len(re.findall(r"\\fbox", latex))
-        logger.info(
-            f"After figure insertion: latex={len(latex)} chars, "
-            f"includegraphics={post_figs}, fbox={post_fbox}"
-        )
+        logger.info(f"After figure insertion: latex={len(latex)} chars, includegraphics={post_figs}, fbox={post_fbox}")
 
     return latex
 
@@ -550,9 +542,7 @@ def _generate_continuation(
     """Generate a continuation part (sections only)."""
     is_last = part_num == total_parts
     ending_rule = (
-        "End with \\\\begin{thebibliography} and \\\\end{document}"
-        if is_last
-        else "End with % CONTINUES_NEXT_PART"
+        "End with \\\\begin{thebibliography} and \\\\end{document}" if is_last else "End with % CONTINUES_NEXT_PART"
     )
 
     context_hint = ""
@@ -687,9 +677,7 @@ def _insert_figures(
 
     if not mentions:
         logger.info("No figure mentions found — inserting figures section before bibliography")
-        figures_section = "\n\\clearpage\n" + "".join(
-            make_figure(img, i) for i, img in enumerate(images, 1)
-        )
+        figures_section = "\n\\clearpage\n" + "".join(make_figure(img, i) for i, img in enumerate(images, 1))
         return body + figures_section + tail
 
     result = body
@@ -707,9 +695,7 @@ def _insert_figures(
         inserted.add(fig_num)
 
     # Remaining figures (no mention) go into body, before tail
-    remaining = "".join(
-        make_figure(images[i - 1], i) for i in range(1, len(images) + 1) if i not in inserted
-    )
+    remaining = "".join(make_figure(images[i - 1], i) for i in range(1, len(images) + 1) if i not in inserted)
     return result + remaining + tail
 
 
@@ -744,12 +730,8 @@ def _merge_all_parts(part1: str, continuation_parts: list[str]) -> str:
             cleaned.append(part)
 
     # Track section AND subsection titles seen in Part 1 for deduplication
-    seen_sections: set[str] = {
-        s.lower().strip() for s in re.findall(r"\\section\{([^}]+)\}", part1)
-    }
-    seen_subsections: set[str] = {
-        s.lower().strip() for s in re.findall(r"\\subsection\{([^}]+)\}", part1)
-    }
+    seen_sections: set[str] = {s.lower().strip() for s in re.findall(r"\\section\{([^}]+)\}", part1)}
+    seen_subsections: set[str] = {s.lower().strip() for s in re.findall(r"\\subsection\{([^}]+)\}", part1)}
 
     # Remove duplicate sections/subsections from continuation parts
     deduped: list[str] = []
@@ -905,9 +887,7 @@ def _replace_bibliography(latex: str, real_bib: str) -> str:
             end_doc = latex.rfind("\\end{document}")
             if end_doc != -1:
                 latex = latex[:end_doc] + "\n" + last_bib_text + "\n" + latex[end_doc:]
-            logger.info(
-                f"Deduplicated {len(all_bibs)} bibliography blocks — kept final part's bibliography"
-            )
+            logger.info(f"Deduplicated {len(all_bibs)} bibliography blocks — kept final part's bibliography")
         return latex
 
     all_bibs = list(bib_pattern.finditer(latex))
@@ -976,13 +956,7 @@ def _preprocess_content(structured_content: str) -> str:
         # Only move blocks that are clearly footnotes:
         # must have a footnote symbol, be long, appear after
         # title/authors, and NOT be email/affiliation blocks
-        if (
-            has_footnote_symbol
-            and word_count > 50
-            and i > 1
-            and not has_email
-            and not is_affiliation
-        ):
+        if has_footnote_symbol and word_count > 50 and i > 1 and not has_email and not is_affiliation:
             footnotes.append(f"[FOOTNOTE] {block}")
         else:
             clean_start.append(block)

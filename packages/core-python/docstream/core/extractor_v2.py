@@ -149,9 +149,7 @@ def extract_structured(
     try:
         doc = fitz.open(str(pdf_path))
     except Exception as e:
-        raise ExtractionError(
-            f"Cannot open PDF: {e}. Is the file a valid, non-password-protected PDF?"
-        )
+        raise ExtractionError(f"Cannot open PDF: {e}. Is the file a valid, non-password-protected PDF?")
 
     try:
         result = _process_document(doc, pdf_path)

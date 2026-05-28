@@ -62,11 +62,7 @@ export default function ProgressTracker() {
       <div className="space-y-1">
         {stages.map((stage, i) => {
           const status =
-            elapsed >= stage.endAt
-              ? "done"
-              : elapsed >= stage.startAt
-                ? "active"
-                : "pending";
+            elapsed >= stage.endAt ? "done" : elapsed >= stage.startAt ? "active" : "pending";
 
           return (
             <motion.div
@@ -75,9 +71,7 @@ export default function ProgressTracker() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.1 }}
               className={`flex items-start gap-4 p-4 rounded-xl transition-all duration-300 ${
-                status === "active"
-                  ? "bg-blue-500/10 border border-blue-500/20"
-                  : "bg-transparent"
+                status === "active" ? "bg-blue-500/10 border border-blue-500/20" : "bg-transparent"
               }`}
             >
               {/* Icon */}
@@ -89,10 +83,7 @@ export default function ProgressTracker() {
                 ) : status === "active" ? (
                   <motion.div
                     animate={{
-                      boxShadow: [
-                        "0 0 0 0 rgba(59,130,246,0.6)",
-                        "0 0 0 8px rgba(59,130,246,0)",
-                      ],
+                      boxShadow: ["0 0 0 0 rgba(59,130,246,0.6)", "0 0 0 8px rgba(59,130,246,0)"],
                     }}
                     transition={{ repeat: Infinity, duration: 1.2 }}
                     className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500 flex items-center justify-center"

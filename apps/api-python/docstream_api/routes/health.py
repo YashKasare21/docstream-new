@@ -4,7 +4,6 @@ from fastapi import APIRouter
 
 from docstream_api.models.schemas import HealthResponse
 
-
 router = APIRouter(prefix="/api", tags=["health"])
 
 

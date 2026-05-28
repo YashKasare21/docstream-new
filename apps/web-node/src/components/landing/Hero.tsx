@@ -5,7 +5,7 @@ import { ArrowRight, FileText, CheckCircle, Zap } from "lucide-react";
 import { motion, useMotionValue, animate } from "framer-motion";
 
 const PARTICLES = [
-  { top: "8%",  left: "-10px" },
+  { top: "8%", left: "-10px" },
   { top: "35%", right: "-10px" },
   { top: "65%", left: "-14px" },
   { bottom: "12%", right: "-12px" },
@@ -33,9 +33,7 @@ export default function Hero() {
   };
 
   return (
-    <section
-      className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 lg:pt-36 lg:pb-24 grid lg:grid-cols-2 gap-16 items-center"
-    >
+    <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 lg:pt-36 lg:pb-24 grid lg:grid-cols-2 gap-16 items-center">
       {/* Dot-grid background */}
       <div
         aria-hidden
@@ -43,13 +41,15 @@ export default function Hero() {
         style={{
           backgroundImage: "radial-gradient(#1E3A5F 1px, transparent 1px)",
           backgroundSize: "32px 32px",
-          maskImage:
-            "radial-gradient(ellipse 80% 60% at 50% 0%, black 50%, transparent 100%)",
+          maskImage: "radial-gradient(ellipse 80% 60% at 50% 0%, black 50%, transparent 100%)",
           WebkitMaskImage:
             "radial-gradient(ellipse 80% 60% at 50% 0%, black 50%, transparent 100%)",
         }}
       />
-      <div className="absolute inset-0 dot-grid opacity-40 pointer-events-none -z-10" aria-hidden="true" />
+      <div
+        className="absolute inset-0 dot-grid opacity-40 pointer-events-none -z-10"
+        aria-hidden="true"
+      />
 
       {/* Left column — copy */}
       <div className="space-y-8">
@@ -60,8 +60,8 @@ export default function Hero() {
           transition={{ duration: 0.5 }}
           className="inline-flex items-center gap-2 glass-card px-4 py-1.5 text-xs text-blue-300 border border-blue-500/20 mb-8"
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-          ⭐ Open Source · PyPI Published · MIT License
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />⭐ Open Source ·
+          PyPI Published · MIT License
         </motion.div>
 
         {/* Heading */}
@@ -85,9 +85,8 @@ export default function Hero() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="text-lg lg:text-xl text-slate-400 leading-relaxed max-w-xl"
         >
-          Upload your research papers, theses, or proof-heavy documents. Our
-          AI-powered pipeline extracts structure, formulas, and citations into
-          publication-quality LaTeX in minutes.
+          Upload your research papers, theses, or proof-heavy documents. Our AI-powered pipeline
+          extracts structure, formulas, and citations into publication-quality LaTeX in minutes.
         </motion.p>
 
         {/* CTAs */}
@@ -153,9 +152,7 @@ export default function Hero() {
                   <FileText className="w-5 h-5 text-red-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-white">
-                    paper_draft.pdf
-                  </p>
+                  <p className="text-sm font-medium text-white">paper_draft.pdf</p>
                   <p className="text-xs text-slate-500">2.4 MB</p>
                 </div>
               </div>

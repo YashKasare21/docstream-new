@@ -32,10 +32,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" style={{ backgroundColor: '#050810' }}>
-      <body
-        className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
-      >
+    <html lang="en" className="dark" style={{ backgroundColor: "#050810" }}>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
         <div className="mesh-bg" aria-hidden="true" />
         {children}
       </body>

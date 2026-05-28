@@ -35,15 +35,10 @@ const templates = [
   },
 ];
 
-export default function TemplateSelector({
-  selected,
-  onSelect,
-}: TemplateSelectorProps) {
+export default function TemplateSelector({ selected, onSelect }: TemplateSelectorProps) {
   return (
     <div>
-      <h3 className="text-lg font-semibold text-white mb-4">
-        Choose a template
-      </h3>
+      <h3 className="text-lg font-semibold text-white mb-4">Choose a template</h3>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {templates.map((tmpl) => {
           const Icon = tmpl.icon;
@@ -84,23 +79,13 @@ export default function TemplateSelector({
                   isSelected ? "bg-blue-500/20" : "bg-white/[0.06]"
                 } ${tmpl.popular ? "mt-6" : ""}`}
               >
-                <Icon
-                  className={`w-5 h-5 ${
-                    isSelected ? "text-blue-400" : "text-slate-400"
-                  }`}
-                />
+                <Icon className={`w-5 h-5 ${isSelected ? "text-blue-400" : "text-slate-400"}`} />
               </div>
 
-              <h4
-                className={`font-semibold mb-1 ${
-                  isSelected ? "text-white" : "text-slate-200"
-                }`}
-              >
+              <h4 className={`font-semibold mb-1 ${isSelected ? "text-white" : "text-slate-200"}`}>
                 {tmpl.title}
               </h4>
-              <p className="text-xs text-slate-400 leading-relaxed mb-3">
-                {tmpl.description}
-              </p>
+              <p className="text-xs text-slate-400 leading-relaxed mb-3">{tmpl.description}</p>
               <span className="inline-flex text-xs px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.08] text-slate-400 mt-2">
                 {tmpl.tag}
               </span>

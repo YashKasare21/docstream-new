@@ -34,10 +34,7 @@ async def convert_document(
     """
     import docstream
 
-    logger.info(
-        f"[{job_id}] Starting conversion: "
-        f"file={file_path.name} template={template}"
-    )
+    logger.info(f"[{job_id}] Starting conversion: file={file_path.name} template={template}")
 
     try:
         loop = asyncio.get_event_loop()
@@ -58,9 +55,7 @@ async def convert_document(
                 "error": result.error or "Conversion failed.",
             }
 
-        logger.info(
-            f"[{job_id}] Complete in {result.processing_time}s"
-        )
+        logger.info(f"[{job_id}] Complete in {result.processing_time}s")
 
         return {
             "success": True,
@@ -81,8 +76,5 @@ async def convert_document(
         return {
             "success": False,
             "job_id": job_id,
-            "error": (
-                "An unexpected error occurred. "
-                "Please try again."
-            ),
+            "error": ("An unexpected error occurred. Please try again."),
         }

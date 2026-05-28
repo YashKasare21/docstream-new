@@ -34,9 +34,9 @@ API_PIP := $(VENV_API)/bin/pip
 
 .PHONY: help install install-cli install-api install-web \
         dev dev-api dev-web \
-        test test-core test-cli test-api \
-        lint lint-py lint-web \
-        format clean
+        test test-core test-cli test-api test-python \
+        lint lint-python lint-py lint-web \
+        format format-python clean
 
 # Default target — show help.
 help:
@@ -46,9 +46,13 @@ help:
 	@echo "  make dev          Run FastAPI backend and Next.js frontend concurrently"
 	@echo "  make dev-api      Run only the FastAPI backend"
 	@echo "  make dev-web      Run only the Next.js frontend"
-	@echo "  make test         Run all Python tests"
+	@echo "  make test         Run all Python tests (core + cli + api)"
+	@echo "  make test-python  Run core + API tests"
 	@echo "  make lint         Lint Python and JS sources"
+	@echo "  make lint-python  Lint Python sources only"
+	@echo "  make lint-web     Lint Web/Next.js sources only"
 	@echo "  make format       Auto-format Python sources with ruff"
+	@echo "  make format-python  Alias for format"
 	@echo "  make clean        Remove venvs, build artifacts, caches"
 	@echo ""
 
@@ -104,6 +108,8 @@ dev-web:
 # -----------------------------------------------------------------------------
 
 test: test-core test-cli test-api
+
+test-python: test-core test-api
 	@echo "✓ All Python tests complete."
 
 # Core tests are exercised through the CLI venv (which has docstream-core installed editable).
@@ -123,7 +129,11 @@ test-api:
 # Lint / format
 # -----------------------------------------------------------------------------
 
-lint: lint-py lint-web
+lint: lint-python lint-web
+
+# Aliases
+lint-python: lint-py
+format-python: format
 
 lint-py:
 	@echo "→ Linting Python sources with ruff..."

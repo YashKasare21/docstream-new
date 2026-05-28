@@ -46,9 +46,7 @@ def compile_latex(
 
     # Check XeLaTeX is available
     if not _xelatex_available():
-        raise RenderingError(
-            "XeLaTeX not found. Install with:\n  sudo apt install texlive-xetex texlive-latex-extra"
-        )
+        raise RenderingError("XeLaTeX not found. Install with:\n  sudo apt install texlive-xetex texlive-latex-extra")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -86,9 +84,7 @@ def compile_latex(
             # PDF not generated — compilation failed
             error_summary = "\n".join(errors[:5]) if errors else "Unknown error"
             raise CompilationError(
-                f"XeLaTeX failed to produce PDF.\n"
-                f"Errors found:\n{error_summary}\n"
-                f"LaTeX saved to: {output_tex}"
+                f"XeLaTeX failed to produce PDF.\nErrors found:\n{error_summary}\nLaTeX saved to: {output_tex}"
             )
 
         output_pdf = output_dir / f"{filename}.pdf"

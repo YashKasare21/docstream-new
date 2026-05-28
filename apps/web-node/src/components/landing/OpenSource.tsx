@@ -24,12 +24,10 @@ export default function OpenSource() {
       >
         <div className="relative z-10">
           {/* Title */}
-          <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
-            Proudly Open Source
-          </h2>
+          <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">Proudly Open Source</h2>
           <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Docstream is MIT licensed. Use it, fork it, contribute to it. The
-            library is published on PyPI and used by developers worldwide.
+            Docstream is MIT licensed. Use it, fork it, contribute to it. The library is published
+            on PyPI and used by developers worldwide.
           </p>
 
           {/* Buttons */}

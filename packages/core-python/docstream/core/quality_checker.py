@@ -171,10 +171,7 @@ class QualityChecker:
         text_only = re.sub(r"\\[a-zA-Z]+(\{[^}]*\})*", "", latex)
         text_only = re.sub(r"[%{}\[\]]", "", text_only)
         if len(text_only.strip()) < 50:
-            errors.append(
-                "Document appears to be empty or contains only LaTeX "
-                "commands with no actual content."
-            )
+            errors.append("Document appears to be empty or contains only LaTeX commands with no actual content.")
 
         # 4. \documentclass should be the first non-comment line
         lines = latex.strip().split("\n")
@@ -194,10 +191,7 @@ class QualityChecker:
         # 6. Template-specific package hints (non-blocking)
         for pkg in self.TEMPLATE_REQUIRED_PACKAGES.get(template, []):
             if pkg not in latex:
-                warnings.append(
-                    f"Template '{template}' typically requires package "
-                    f"'{pkg}' but it was not found."
-                )
+                warnings.append(f"Template '{template}' typically requires package '{pkg}' but it was not found.")
 
         return errors, warnings
 
@@ -337,16 +331,11 @@ class QualityChecker:
             resume_keywords = ["experience", "education", "skills"]
             found = sum(1 for kw in resume_keywords if kw.lower() in latex.lower())
             if found < 2:
-                warnings.append(
-                    "Resume appears to be missing key sections. "
-                    "Expected: experience, education, skills."
-                )
+                warnings.append("Resume appears to be missing key sections. Expected: experience, education, skills.")
 
         # 6. Placeholder text
         if "lorem ipsum" in latex.lower():
-            warnings.append(
-                "Document contains placeholder text ('lorem ipsum'). Replace with real content."
-            )
+            warnings.append("Document contains placeholder text ('lorem ipsum'). Replace with real content.")
 
         # 7. Developer markers
         if "TODO" in latex or "FIXME" in latex:

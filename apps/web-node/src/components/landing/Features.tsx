@@ -38,9 +38,7 @@ export default function Features() {
         transition={{ duration: 0.5 }}
         className="text-center mb-16"
       >
-        <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
-          Built for precision
-        </h2>
+        <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">Built for precision</h2>
         <p className="text-lg text-slate-400 max-w-2xl mx-auto">
           Advanced features to handle the most demanding academic layouts
         </p>
@@ -66,9 +64,7 @@ export default function Features() {
               <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-blue-100 transition-colors">
                 {feature.title}
               </h3>
-              <p className="text-slate-400 leading-relaxed">
-                {feature.description}
-              </p>
+              <p className="text-slate-400 leading-relaxed">{feature.description}</p>
             </motion.div>
           );
         })}

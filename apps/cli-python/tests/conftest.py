@@ -9,9 +9,8 @@ import os
 import tempfile
 from pathlib import Path
 
-import pytest
-
 import docstream
+import pytest
 from docstream.models.document import (
     BlockType,
     DocumentAST,
@@ -118,9 +117,7 @@ def sample_document_ast(sample_document_metadata):
         ),
     ]
 
-    return DocumentAST(
-        metadata=sample_document_metadata, sections=sections, blocks=[], tables=[], images=[]
-    )
+    return DocumentAST(metadata=sample_document_metadata, sections=sections, blocks=[], tables=[], images=[])
 
 
 @pytest.fixture
@@ -390,9 +387,7 @@ def mock_renderer():
 
     class MockRenderer:
         def render_to_latex(self, document, template, options=None):
-            return (
-                "\\documentclass{article}\n\\begin{document}\nMock LaTeX content\n\\end{document}"
-            )
+            return "\\documentclass{article}\n\\begin{document}\nMock LaTeX content\n\\end{document}"
 
         def render_to_pdf(self, document, template, options=None):
             return b"Mock PDF content"
@@ -415,9 +410,7 @@ def digital_pdf_path(tmp_path):
     font = fitz.Font("helv")
     tw = fitz.TextWriter(page.rect)
     # Insert enough text to exceed the 100-char scanned threshold
-    tw.append(
-        fitz.Point(72, 100), "Hello World from DocStream extraction test.", font=font, fontsize=12
-    )
+    tw.append(fitz.Point(72, 100), "Hello World from DocStream extraction test.", font=font, fontsize=12)
     tw.append(
         fitz.Point(72, 130),
         "Second line: this text must be extractable by PyMuPDF get_text.",

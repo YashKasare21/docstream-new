@@ -63,8 +63,7 @@ class FormatRouter:
         suffix = Path(file_path).suffix.lower()
         if suffix not in self.SUPPORTED_FORMATS:
             raise ExtractionError(
-                f"Unsupported file format: '{suffix}'. "
-                f"Supported: {', '.join(self.SUPPORTED_FORMATS.keys())}"
+                f"Unsupported file format: '{suffix}'. Supported: {', '.join(self.SUPPORTED_FORMATS.keys())}"
             )
         return self.SUPPORTED_FORMATS[suffix]
 
@@ -94,8 +93,7 @@ class FormatRouter:
 
         if not blocks:
             raise ExtractionError(
-                f"No content could be extracted from '{file_path.name}'. "
-                "The file may be empty or corrupted."
+                f"No content could be extracted from '{file_path.name}'. The file may be empty or corrupted."
             )
 
         return blocks

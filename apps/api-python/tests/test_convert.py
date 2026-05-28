@@ -1,11 +1,11 @@
 import io
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import docstream
 
-
 # ── 1. Health endpoint ──
+
 
 def test_health_endpoint_returns_ok(client):
     resp = client.get("/api/health")
@@ -17,20 +17,22 @@ def test_health_endpoint_returns_ok(client):
 
 # ── 2. Invalid file type ──
 
-def test_convert_invalid_file_type_rejected(client):
-    files = {"file": ("test.txt", io.BytesIO(b"hello world"), "text/plain")}
-    resp = client.post("/api/convert", files=files, data={"template": "report"})
+
+def test_convert_unsupported_extension_rejected(client):
+    files = {"file": ("test.doc", io.BytesIO(b"hello world"), "application/msword")}
+    resp = client.post("/api/v2/convert", files=files, data={"template": "report"})
     assert resp.status_code == 200
     data = resp.json()
     assert data["success"] is False
-    assert "not a valid PDF" in data["error"]
+    assert "Unsupported file type" in data["error"]
 
 
 # ── 3. Valid PDF calls docstream ──
 
+
 def test_convert_valid_pdf_calls_docstream(client, sample_pdf_upload, mock_convert_result):
-    with patch("docstream_api.services.converter.docstream.convert", return_value=mock_convert_result) as mock_fn:
-        resp = client.post("/api/convert", files=sample_pdf_upload, data={"template": "report"})
+    with patch("docstream.convert", return_value=mock_convert_result) as mock_fn:
+        resp = client.post("/api/v2/convert", files=sample_pdf_upload, data={"template": "report"})
         data = resp.json()
         assert data["success"] is True
         assert data["tex_url"] is not None
@@ -40,22 +42,24 @@ def test_convert_valid_pdf_calls_docstream(client, sample_pdf_upload, mock_conve
 
 # ── 4. Extraction error returns clean message ──
 
-def test_convert_extraction_error_returns_clean_message(client, sample_pdf_upload):
+
+def test_convert_error_returns_clean_message(client, sample_pdf_upload):
     with patch(
-        "docstream_api.services.converter.docstream.convert",
+        "docstream.convert",
         side_effect=docstream.ExtractionError("raw error"),
     ):
-        resp = client.post("/api/convert", files=sample_pdf_upload, data={"template": "report"})
+        resp = client.post("/api/v2/convert", files=sample_pdf_upload, data={"template": "report"})
         data = resp.json()
         assert data["success"] is False
-        assert "Could not extract content" in data["error"]
+        assert "unexpected error" in data["error"]
         assert "raw error" not in data["error"]
 
 
 # ── 5. Unknown template rejected ──
 
+
 def test_convert_unknown_template_rejected(client, sample_pdf_upload):
-    resp = client.post("/api/convert", files=sample_pdf_upload, data={"template": "unknown"})
+    resp = client.post("/api/v2/convert", files=sample_pdf_upload, data={"template": "unknown"})
     data = resp.json()
     assert data["success"] is False
     assert "Unknown template" in data["error"]
@@ -63,13 +67,14 @@ def test_convert_unknown_template_rejected(client, sample_pdf_upload):
 
 # ── 6. File served after conversion ──
 
+
 def test_file_served_after_conversion(client, sample_pdf_upload, mock_convert_result, tmp_path):
     # Create a fake output file
     fake_output = tmp_path / "document.tex"
     fake_output.write_text(r"\documentclass{article}")
 
-    with patch("docstream_api.services.converter.docstream.convert", return_value=mock_convert_result):
-        resp = client.post("/api/convert", files=sample_pdf_upload, data={"template": "report"})
+    with patch("docstream.convert", return_value=mock_convert_result):
+        resp = client.post("/api/v2/convert", files=sample_pdf_upload, data={"template": "report"})
         data = resp.json()
         assert data["success"] is True
 

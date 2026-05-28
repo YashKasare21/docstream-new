@@ -54,10 +54,7 @@ interface FormatSelectorProps {
   onFormatChange: (format: string) => void;
 }
 
-export default function FormatSelector({
-  selectedFormat,
-  onFormatChange,
-}: FormatSelectorProps) {
+export default function FormatSelector({ selectedFormat, onFormatChange }: FormatSelectorProps) {
   return (
     <div>
       <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">

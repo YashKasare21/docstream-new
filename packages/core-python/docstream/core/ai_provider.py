@@ -234,9 +234,7 @@ class OllamaProvider(AIProvider):
         base_url: str | None = None,
         model: str = "llama3.1:8b",
     ) -> None:
-        self.base_url = (base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")).rstrip(
-            "/"
-        )
+        self.base_url = (base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")).rstrip("/")
         self.model = model
 
     def complete(self, prompt: str, system: str = "") -> str:
@@ -262,9 +260,7 @@ class OllamaProvider(AIProvider):
         except httpx.TimeoutException as exc:
             raise APIError("Ollama timed out after 120 s.") from exc
         except httpx.HTTPStatusError as exc:
-            raise APIError(
-                f"Ollama HTTP {exc.response.status_code}: {exc.response.text[:200]}"
-            ) from exc
+            raise APIError(f"Ollama HTTP {exc.response.status_code}: {exc.response.text[:200]}") from exc
 
     def is_available(self) -> bool:
         """Return True if Ollama is reachable and the model is loaded."""
@@ -302,9 +298,7 @@ class AIProviderChain:
         self,
         providers: list[AIProvider] | None = None,
     ) -> None:
-        self._providers: list[AIProvider] = (
-            providers if providers is not None else self._build_chain()
-        )
+        self._providers: list[AIProvider] = providers if providers is not None else self._build_chain()
 
     def _build_chain(self) -> list[AIProvider]:
         """Build provider list from available environment credentials."""

@@ -3,6 +3,7 @@
 ## Project Overview
 
 Docstream is an AI-powered PDF → LaTeX/PDF conversion system.
+
 - **Frontend**: Next.js 16 App Router, TypeScript (strict), Tailwind CSS v4, shadcn/ui, Framer Motion
 - **Backend**: FastAPI (Python 3.11+), `docstream` library
 - **Deploy**: Vercel (frontend), Railway (backend)
@@ -13,6 +14,7 @@ Docstream is an AI-powered PDF → LaTeX/PDF conversion system.
 ## Build Commands
 
 ### Frontend (run from repo root)
+
 ```bash
 npm run dev          # Development server at http://localhost:3000
 npm run build        # Production build — MUST pass before merging
@@ -21,6 +23,7 @@ npx tsc --noEmit    # TypeScript type check — zero errors required
 ```
 
 ### Backend (run from `docstream-api/`)
+
 ```bash
 source .venv/bin/activate              # Activate virtual environment
 uvicorn main:app --reload            # Dev server at http://localhost:8000
@@ -35,6 +38,7 @@ pytest tests/ -k "pattern"           # Run tests matching pattern
 ## Code Style
 
 ### TypeScript (Frontend)
+
 - **Strict mode**: No `implicit any`, no `any` without justification comment
 - **Props interfaces**: All component props must have explicit interfaces
 - **API types**: All API responses must be typed with interfaces
@@ -43,6 +47,7 @@ pytest tests/ -k "pattern"           # Run tests matching pattern
 - **No unused imports**: ESLint enforces this
 
 ### Python (Backend)
+
 - **Type hints**: Mandatory on all function signatures
 - **Pydantic models**: Required for all request/response schemas
 - **Custom exceptions**: Use docstream's typed exceptions (`ExtractionError`, `RenderingError`, etc.)
@@ -50,6 +55,7 @@ pytest tests/ -k "pattern"           # Run tests matching pattern
 - **Error mapping**: Map exceptions to appropriate HTTP status codes (never raw 500s for expected errors)
 
 ### General
+
 - **No console.log**: Use proper logging instead
 - **No hardcoded secrets**: Use environment variables exclusively
 - **No TODO comments**: File a GitHub issue instead
@@ -101,6 +107,7 @@ Backend (docstream-api/)
 Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`
 
 Examples:
+
 - `feat(convert): add multi-format upload support`
 - `fix(preview): handle missing PDF gracefully`
 - `refactor(api): extract feedback submission to hook`
@@ -118,12 +125,14 @@ Examples:
 - **Fonts**: Inter for UI, JetBrains Mono for code/filenames
 
 ### Accessibility
+
 - Every interactive element needs hover AND focus states
 - Animations must respect `prefers-reduced-motion`
 - Loading states are mandatory — never leave user without feedback
 - Error messages must be human-readable — no raw exception text
 
 ### Prohibited
+
 - Default browser alerts (use toast notifications)
 - Layout shift during loading
 - Text truncation without tooltip

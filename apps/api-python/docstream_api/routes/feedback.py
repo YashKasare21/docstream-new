@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter
 
-from docstream_api.database import get_stats, init_db, insert_feedback
+from docstream_api.database import get_stats, insert_feedback
 from docstream_api.models.schemas import FeedbackCreate, FeedbackResponse, FeedbackStats
 
 logger = logging.getLogger(__name__)

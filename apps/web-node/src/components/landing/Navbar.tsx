@@ -75,11 +75,7 @@ export default function Navbar() {
             className="md:hidden text-slate-400 hover:text-white transition-colors"
             aria-label="Toggle menu"
           >
-            {mobileMenuOpen ? (
-              <X className="w-6 h-6" />
-            ) : (
-              <Menu className="w-6 h-6" />
-            )}
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </div>

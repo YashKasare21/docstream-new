@@ -58,8 +58,7 @@ export default function ConvertPage() {
     checkHealth().then(setBackendUp);
   }, []);
 
-  const formatOpt =
-    FORMAT_OPTIONS.find((f) => f.ext === selectedFormat) ?? FORMAT_OPTIONS[0];
+  const formatOpt = FORMAT_OPTIONS.find((f) => f.ext === selectedFormat) ?? FORMAT_OPTIONS[0];
 
   const handleConvert = useCallback(async () => {
     if (state.status !== "file_selected") return;
@@ -72,14 +71,12 @@ export default function ConvertPage() {
     } catch (err) {
       dispatch({
         type: "FAIL",
-        message:
-          err instanceof Error ? err.message : "An unexpected error occurred.",
+        message: err instanceof Error ? err.message : "An unexpected error occurred.",
       });
     }
   }, [state, template]);
 
-  const isInputVisible =
-    state.status === "idle" || state.status === "file_selected";
+  const isInputVisible = state.status === "idle" || state.status === "file_selected";
 
   return (
     <div className="min-h-screen relative text-slate-200">
@@ -115,12 +112,8 @@ export default function ConvertPage() {
 
         {/* Heading */}
         <div className="mb-10">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-            Convert your document
-          </h1>
-          <p className="text-slate-400">
-            Upload a file and select a template. We handle the rest.
-          </p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Convert your document</h1>
+          <p className="text-slate-400">Upload a file and select a template. We handle the rest.</p>
         </div>
 
         {/* ── Content per state ── */}
@@ -140,9 +133,7 @@ export default function ConvertPage() {
 
               <DropZone
                 file={state.status === "file_selected" ? state.file : null}
-                onFileSelect={(file) =>
-                  dispatch({ type: "SELECT_FILE", file })
-                }
+                onFileSelect={(file) => dispatch({ type: "SELECT_FILE", file })}
                 onFileRemove={() => dispatch({ type: "REMOVE_FILE" })}
                 acceptedMime={formatOpt.mime}
                 acceptedExt={formatOpt.ext}
@@ -180,10 +171,7 @@ export default function ConvertPage() {
 
           {/* Error */}
           {state.status === "error" && (
-            <ErrorCard
-              message={state.message}
-              onRetry={() => dispatch({ type: "RESET" })}
-            />
+            <ErrorCard message={state.message} onRetry={() => dispatch({ type: "RESET" })} />
           )}
         </div>
       </div>
