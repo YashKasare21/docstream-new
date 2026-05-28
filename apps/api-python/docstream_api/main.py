@@ -8,13 +8,13 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")  # noqa: E402
 
-from docstream_api.database import init_db
-from docstream_api.routes.convert import router as convert_router
-from docstream_api.routes.feedback import router as feedback_router
-from docstream_api.routes.health import router as health_router
-from docstream_api.utils.file_handler import cleanup_old_jobs
+from docstream_api.database import init_db  # noqa: E402
+from docstream_api.routes.convert import router as convert_router  # noqa: E402
+from docstream_api.routes.feedback import router as feedback_router  # noqa: E402
+from docstream_api.routes.health import router as health_router  # noqa: E402
+from docstream_api.utils.file_handler import cleanup_old_jobs  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
