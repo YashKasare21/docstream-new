@@ -7,3 +7,9 @@ extend-exclude = [
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+addopts = "-m 'not e2e' --import-mode=importlib"
+markers = [
+    "e2e: End-to-end tests that require a running API server on localhost:8000",
+]

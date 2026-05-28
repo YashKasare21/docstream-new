@@ -11,8 +11,8 @@ import json
 from unittest.mock import patch
 
 import pytest
-from docstream.cli import build_parser, main
 from docstream.models.document import Block, BlockType, ConversionResult
+from docstream_cli.cli import build_parser, main
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -25,7 +25,7 @@ def success_result(tmp_path):
         success=True,
         tex_path=tmp_path / "document.tex",
         pdf_path=tmp_path / "document.pdf",
-        processing_time_seconds=0.42,
+        processing_time=0.42,
         template_used="report",
     )
 
@@ -35,7 +35,7 @@ def failed_result():
     return ConversionResult(
         success=False,
         error="xelatex: compilation failed",
-        processing_time_seconds=0.1,
+        processing_time=0.1,
         template_used="report",
     )
 
@@ -84,32 +84,32 @@ class TestVersionFlag:
 
 class TestConvertCommand:
     def test_success_returns_zero(self, success_result, tmp_path):
-        with patch("docstream.cli._with_progress", return_value=success_result):
+        with patch("docstream_cli.cli._with_progress", return_value=success_result):
             code = main(["convert", "paper.pdf", "--output", str(tmp_path)])
         assert code == 0
 
     def test_failure_result_returns_one(self, failed_result, tmp_path):
-        with patch("docstream.cli._with_progress", return_value=failed_result):
+        with patch("docstream_cli.cli._with_progress", return_value=failed_result):
             code = main(["convert", "paper.pdf", "--output", str(tmp_path)])
         assert code == 1
 
     def test_exception_returns_one(self, tmp_path):
-        with patch("docstream.cli._with_progress", side_effect=RuntimeError("boom")):
+        with patch("docstream_cli.cli._with_progress", side_effect=RuntimeError("boom")):
             code = main(["convert", "paper.pdf", "--output", str(tmp_path)])
         assert code == 1
 
     def test_template_flag_long(self, success_result, tmp_path):
-        with patch("docstream.cli._with_progress", return_value=success_result):
+        with patch("docstream_cli.cli._with_progress", return_value=success_result):
             code = main(["convert", "paper.pdf", "--template", "ieee", "--output", str(tmp_path)])
         assert code == 0
 
     def test_template_flag_short(self, success_result, tmp_path):
-        with patch("docstream.cli._with_progress", return_value=success_result):
+        with patch("docstream_cli.cli._with_progress", return_value=success_result):
             code = main(["convert", "paper.pdf", "-t", "resume", "-o", str(tmp_path)])
         assert code == 0
 
     def test_output_printed_on_success(self, success_result, tmp_path, capsys):
-        with patch("docstream.cli._with_progress", return_value=success_result):
+        with patch("docstream_cli.cli._with_progress", return_value=success_result):
             main(["convert", "paper.pdf", "--output", str(tmp_path)])
         captured = capsys.readouterr()
         assert "document.pdf" in captured.out or "document.tex" in captured.out
@@ -122,32 +122,32 @@ class TestConvertCommand:
 
 class TestExtractCommand:
     def test_success_returns_zero(self, sample_blocks):
-        with patch("docstream.cli._with_progress", return_value=sample_blocks):
+        with patch("docstream_cli.cli._with_progress", return_value=sample_blocks):
             code = main(["extract", "paper.pdf"])
         assert code == 0
 
     def test_exception_returns_one(self):
-        with patch("docstream.cli._with_progress", side_effect=RuntimeError("fail")):
+        with patch("docstream_cli.cli._with_progress", side_effect=RuntimeError("fail")):
             code = main(["extract", "paper.pdf"])
         assert code == 1
 
     def test_saves_json_file(self, sample_blocks, tmp_path):
         out_file = tmp_path / "blocks.json"
-        with patch("docstream.cli._with_progress", return_value=sample_blocks):
+        with patch("docstream_cli.cli._with_progress", return_value=sample_blocks):
             code = main(["extract", "paper.pdf", "--output", str(out_file)])
         assert code == 0
         assert out_file.exists()
 
     def test_json_file_is_valid_list(self, sample_blocks, tmp_path):
         out_file = tmp_path / "blocks.json"
-        with patch("docstream.cli._with_progress", return_value=sample_blocks):
+        with patch("docstream_cli.cli._with_progress", return_value=sample_blocks):
             main(["extract", "paper.pdf", "--output", str(out_file)])
         data = json.loads(out_file.read_text())
         assert isinstance(data, list)
         assert len(data) == 2
 
     def test_prints_to_stdout_without_output_flag(self, sample_blocks, capsys):
-        with patch("docstream.cli._with_progress", return_value=sample_blocks):
+        with patch("docstream_cli.cli._with_progress", return_value=sample_blocks):
             main(["extract", "paper.pdf"])
         captured = capsys.readouterr()
         data = json.loads(captured.out)
@@ -155,7 +155,7 @@ class TestExtractCommand:
 
     def test_short_output_flag(self, sample_blocks, tmp_path):
         out_file = tmp_path / "out.json"
-        with patch("docstream.cli._with_progress", return_value=sample_blocks):
+        with patch("docstream_cli.cli._with_progress", return_value=sample_blocks):
             code = main(["extract", "paper.pdf", "-o", str(out_file)])
         assert code == 0
 

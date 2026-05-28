@@ -4,9 +4,7 @@ Docstream v2 — End-to-end test script.
 Tests the full pipeline with real files.
 
 Usage:
-  cd docstream-api
-  source .venv/bin/activate
-  python ../scripts/e2e_test.py
+  pytest -m e2e
 
 Prerequisites:
   - uvicorn running on port 8000  (uvicorn main:app --reload)
@@ -17,7 +15,10 @@ import sys
 import time
 from pathlib import Path
 
+import pytest
 import requests
+
+pytestmark = pytest.mark.e2e
 
 BASE_URL = "http://localhost:8000"
 
