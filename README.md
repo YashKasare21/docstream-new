@@ -28,7 +28,7 @@ DocStream isn't just a document converter—it's a blueprint for modern full-sta
 
 ## ✨ Key Features
 
-- **Real-Time Streaming:** Watch documents process chunk-by-chunk via Server-Sent Events (SSE), reducing perceived latency by 90%.
+- **Real-Time Streaming:** Watch documents process chunk-by-chunk via Server-Sent Events (SSE), enabling chunk-by-chunk document delivery and real-time progress tracking.
 - **AI-Powered Extraction:** Leverages LLMs (Gemini/Groq) to intelligently structure complex PDFs into LaTeX.
 - **Dual Interface:** Powerful CLI for automation + Intuitive Next.js Web UI for end-users.
 - **Plugin Architecture:** Extensible pipeline system. Write a Python class and inject it into the processing stream without touching core code.

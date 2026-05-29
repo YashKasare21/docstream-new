@@ -6,7 +6,7 @@ import json
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
 from docstream_api.models.schemas import ConvertResponse
@@ -16,19 +16,11 @@ from docstream_api.services.converter import (
     convert_document,
     stream_document,
 )
+from docstream_api.utils.rate_limit import limiter
 
 router = APIRouter()
 
-SUPPORTED_EXTENSIONS = {
-    ".pdf",
-    ".docx",
-    ".pptx",
-    ".png",
-    ".jpg",
-    ".jpeg",
-    ".md",
-    ".txt",
-}
+SUPPORTED_EXTENSIONS = {".pdf"}
 
 
 @router.post(
@@ -36,14 +28,16 @@ SUPPORTED_EXTENSIONS = {
     response_model=ConvertResponse,
     summary="Convert document to LaTeX",
 )
+@limiter.limit("5/minute")
 async def convert_v2(
+    request: Request,
     file: UploadFile = File(...),
     template: str = Form(default="report"),
 ):
     """
     Convert an uploaded document to LaTeX and PDF.
 
-    Supports: PDF, DOCX, PPTX, PNG, JPG, MD, TXT
+    Supports: PDF
     Templates: report, ieee
     """
     job_id = str(uuid.uuid4())
@@ -99,7 +93,9 @@ async def convert_v2(
     "/api/v2/stream",
     summary="Convert document with real-time SSE streaming",
 )
+@limiter.limit("5/minute")
 async def stream_v2(
+    request: Request,
     file: UploadFile = File(...),
     template: str = Form(default="report"),
 ):
@@ -236,11 +232,5 @@ async def list_formats():
     return {
         "formats": [
             {"extension": ".pdf", "name": "PDF Document"},
-            {"extension": ".docx", "name": "Word Document"},
-            {"extension": ".pptx", "name": "PowerPoint"},
-            {"extension": ".png", "name": "PNG Image"},
-            {"extension": ".jpg", "name": "JPEG Image"},
-            {"extension": ".md", "name": "Markdown"},
-            {"extension": ".txt", "name": "Plain Text"},
         ]
     }
