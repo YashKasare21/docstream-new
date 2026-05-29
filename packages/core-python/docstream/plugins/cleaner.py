@@ -12,7 +12,7 @@ Example::
     pipeline = Pipeline([
         WhitespaceCleanerStage(),
     ])
-    result = await pipeline.run({"latex": raw_latex})
+    result = pipeline.run({"latex": raw_latex})
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ class WhitespaceCleanerStage(PipelineStage):
     def name(self) -> str:
         return "whitespace_cleaner"
 
-    async def process(self, data: dict) -> dict:
+    def process(self, data: dict) -> dict:
         source = data.get("latex") or data.get("text") or ""
         if not source:
             return data

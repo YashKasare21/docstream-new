@@ -6,7 +6,6 @@
 
 - [x] `gemini-1.5-flash` model removed from Google API → updated to `gemini-2.0-flash`
 - [x] `llama-3.1-70b-versatile` decommissioned on Groq → updated to `llama-3.3-70b-versatile`
-- [x] Lua `write_inlines` crash on nil / unhandled inline types (Link, Math, Cite, etc.) → added full Pandoc inline coverage + nil guard
 - [x] `IEEEtran.cls` missing in Docker images → added `texlive-publishers` to Dockerfiles
 - [x] CLI `extract --output` fails on nested directories → added `parent.mkdir(parents=True)`
 - [x] `test_pdfs/` directory leaked into Docker image → added to `.dockerignore`

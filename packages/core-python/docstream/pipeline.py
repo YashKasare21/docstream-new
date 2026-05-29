@@ -13,12 +13,12 @@ Usage::
     class MyStage(PipelineStage):
         name = "my_stage"
 
-        async def process(self, data):
+        def process(self, data):
             data["greeting"] = "Hello, world!"
             return data
 
     pipeline = Pipeline([MyStage()])
-    result = await pipeline.run({"file_path": "paper.pdf"})
+    result = pipeline.run({"file_path": "paper.pdf"})
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ class PipelineStage(ABC):
         return type(self).__name__
 
     @abstractmethod
-    async def process(self, data: dict) -> dict:
+    def process(self, data: dict) -> dict:
         """Transform *data* and return the (possibly mutated) dictionary.
 
         Args:
@@ -66,7 +66,7 @@ class Pipeline:
     def __init__(self, stages: list[PipelineStage]) -> None:
         self.stages = list(stages)
 
-    async def run(self, initial_data: dict) -> dict:
+    def run(self, initial_data: dict) -> dict:
         """Execute all stages sequentially and return the final data dict.
 
         Args:
@@ -81,7 +81,7 @@ class Pipeline:
         for idx, stage in enumerate(self.stages, start=1):
             stage_name = stage.name
             logger.info("[Pipeline] Stage %d/%d: %s", idx, total, stage_name)
-            data = await stage.process(data)
+            data = stage.process(data)
 
         logger.info("[Pipeline] All %d stages completed", total)
         return data
@@ -120,8 +120,7 @@ class LatexExtractionStage(PipelineStage):
     def name(self) -> str:
         return "latex_extraction"
 
-    async def process(self, data: dict) -> dict:
-        import asyncio
+    def process(self, data: dict) -> dict:
         import shutil
         import time
 
@@ -141,15 +140,12 @@ class LatexExtractionStage(PipelineStage):
 
         try:
             logger.info("Extracting from %s", Path(pdf_path).name)
-            document = await asyncio.to_thread(
-                extract_structured, pdf_path, image_output_dir=image_dir,
-            )
+            document = extract_structured(pdf_path, image_output_dir=image_dir)
             n_images = len(document.get("images", []))
             logger.info("Extracted %d blocks and %d images", len(document["structure"]), n_images)
 
             logger.info("Generating LaTeX (%s template)", template)
-            latex = await asyncio.to_thread(
-                generate_latex,
+            latex = generate_latex(
                 document,
                 template,
                 ai_provider,
@@ -158,8 +154,7 @@ class LatexExtractionStage(PipelineStage):
             logger.info("Generated %d chars of LaTeX", len(latex))
 
             logger.info("Compiling with XeLaTeX")
-            tex_path, pdf_path_out = await asyncio.to_thread(
-                compile_latex,
+            tex_path, pdf_path_out = compile_latex(
                 latex,
                 output_dir,
                 image_dir=image_dir if n_images > 0 else None,

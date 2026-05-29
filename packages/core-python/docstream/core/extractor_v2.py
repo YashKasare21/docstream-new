@@ -347,7 +347,13 @@ def _process_document(
     is_scanned = len(full_text.strip()) < 100
 
     if is_scanned:
-        logger.warning(f"PDF appears to be scanned: {pdf_path.name}. OCR would improve results.")
+        from docstream.exceptions import ScannedPdfError
+
+        raise ScannedPdfError(
+            f"PDF '{pdf_path.name}' appears to be scanned (no extractable text). "
+            "Scanned PDFs require OCR which is not currently supported.",
+            file_path=str(pdf_path),
+        )
 
     logger.info(f"Extracted {len(structure)} blocks from {doc.page_count} pages of {pdf_path.name}")
 

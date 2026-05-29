@@ -153,7 +153,7 @@ class GroqProvider(AIProvider):
             model="llama-3.3-70b-versatile",
             messages=messages,
             temperature=0.1,
-            max_tokens=4096,
+            max_tokens=8192,
         )
         return response.choices[0].message.content
 

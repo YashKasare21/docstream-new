@@ -84,9 +84,9 @@ def convert(
     3. XeLaTeX compiles LaTeX to PDF
 
     Internally this creates a :class:`Pipeline` with a single
-    :class:`LatexExtractionStage` and runs it.  You can also
-    construct custom pipelines with additional stages (see
-    ``docstream.plugins``).
+    :class:`LatexExtractionStage` and runs it synchronously.
+    You can also construct custom pipelines with additional stages
+    (see ``docstream.plugins``).
 
     Args:
         pdf_path: Path to the input PDF file
@@ -103,20 +103,15 @@ def convert(
             print(f"LaTeX: {result.tex_path}")
             print(f"PDF: {result.pdf_path}")
     """
-    import asyncio
-
     from docstream.pipeline import LatexExtractionStage, Pipeline
 
-    async def _run() -> dict:
-        pipeline = Pipeline([LatexExtractionStage()])
-        return await pipeline.run({
-            "file_path": str(pdf_path),
-            "template": template,
-            "output_dir": str(output_dir),
-            "ai_provider": ai_provider,
-        })
-
-    data = asyncio.run(_run())
+    pipeline = Pipeline([LatexExtractionStage()])
+    data = pipeline.run({
+        "file_path": str(pdf_path),
+        "template": template,
+        "output_dir": str(output_dir),
+        "ai_provider": ai_provider,
+    })
 
     if data.get("success"):
         return ConversionResult(
@@ -144,10 +139,10 @@ async def stream_convert(
     """
     Convert a PDF to LaTeX and yield the result chunk by chunk.
 
-    Runs :func:`convert` in a thread pool (the underlying library is
-    synchronous), then reads the generated ``.tex`` file and yields
-    its content line-by-line as an async generator — suitable for
-    Server-Sent Events or other streaming transports.
+    Runs :func:`convert` in a thread pool, then reads the generated
+    ``.tex`` file and yields its content line-by-line as an async
+    generator — suitable for Server-Sent Events or other streaming
+    transports.
 
     Each yielded dict has the shape::
 

@@ -297,6 +297,13 @@ class AIUnavailableError(DocstreamError):
     pass
 
 
+class ScannedPdfError(ExtractionError):
+    """Raised when a PDF appears to be scanned (no extractable text)."""
+
+    def __init__(self, message: str = "Scanned PDFs require OCR which is not currently supported.", file_path: str = None):
+        super().__init__(message, file_path)
+
+
 # Utility functions for error handling
 def handle_extraction_error(func):
     """Decorator to handle extraction errors."""
