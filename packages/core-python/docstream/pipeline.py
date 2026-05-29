@@ -121,6 +121,7 @@ class LatexExtractionStage(PipelineStage):
         return "latex_extraction"
 
     async def process(self, data: dict) -> dict:
+        import asyncio
         import shutil
         import time
 
@@ -140,12 +141,15 @@ class LatexExtractionStage(PipelineStage):
 
         try:
             logger.info("Extracting from %s", Path(pdf_path).name)
-            document = extract_structured(pdf_path, image_output_dir=image_dir)
+            document = await asyncio.to_thread(
+                extract_structured, pdf_path, image_output_dir=image_dir,
+            )
             n_images = len(document.get("images", []))
             logger.info("Extracted %d blocks and %d images", len(document["structure"]), n_images)
 
             logger.info("Generating LaTeX (%s template)", template)
-            latex = generate_latex(
+            latex = await asyncio.to_thread(
+                generate_latex,
                 document,
                 template,
                 ai_provider,
@@ -154,7 +158,8 @@ class LatexExtractionStage(PipelineStage):
             logger.info("Generated %d chars of LaTeX", len(latex))
 
             logger.info("Compiling with XeLaTeX")
-            tex_path, pdf_path_out = compile_latex(
+            tex_path, pdf_path_out = await asyncio.to_thread(
+                compile_latex,
                 latex,
                 output_dir,
                 image_dir=image_dir if n_images > 0 else None,

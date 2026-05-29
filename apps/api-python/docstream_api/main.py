@@ -27,6 +27,8 @@ async def lifespan(app: FastAPI):
     result = subprocess.run(["which", "xelatex"], capture_output=True, text=True)
     logger.info(f"xelatex location: {result.stdout.strip()}")
     logger.info(f"xelatex found: {bool(result.stdout.strip())}")
+    if not result.stdout.strip():
+        raise RuntimeError("xelatex binary not found. DocStream cannot start.")
     yield
 
 

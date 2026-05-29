@@ -451,16 +451,19 @@ def _table_to_markdown(table_data: list[list]) -> str:
     # Build markdown table
     lines: list[str] = []
 
+    # Find max columns across ALL rows to avoid silent data loss
+    max_cols = max(len(row) for row in cleaned)
+
+    # Normalize/pad all rows to max_cols
+    normalized = [row + [''] * (max_cols - len(row)) for row in cleaned]
+
     # Header row
-    header = cleaned[0]
+    header = normalized[0]
     lines.append("| " + " | ".join(header) + " |")
-    lines.append("|" + "|".join(["---"] * len(header)) + "|")
+    lines.append("|" + "|".join(["---"] * max_cols) + "|")
 
     # Data rows
-    for row in cleaned[1:]:
-        # Pad row if needed
-        while len(row) < len(header):
-            row.append("")
-        lines.append("| " + " | ".join(row[: len(header)]) + " |")
+    for row in normalized[1:]:
+        lines.append("| " + " | ".join(row) + " |")
 
     return "\n".join(lines)

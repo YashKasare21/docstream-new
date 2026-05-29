@@ -56,24 +56,14 @@ async def convert_v2(
             error=(f"Unknown template '{template}'. Supported: {', '.join(sorted(VALID_TEMPLATES))}"),
         )
 
-    # Validate extension
-    filename = file.filename or "document.pdf"
+    # Validate extension (LFI: strip directory components)
+    filename = Path(file.filename or "document.pdf").name
     ext = Path(filename).suffix.lower()
     if ext not in SUPPORTED_EXTENSIONS:
         return ConvertResponse(
             success=False,
             job_id=job_id,
             error=(f"Unsupported file type: {ext}. Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"),
-        )
-
-    # Read and validate size
-    content = await file.read()
-    size_mb = len(content) / (1024 * 1024)
-    if size_mb > MAX_FILE_SIZE_MB:
-        return ConvertResponse(
-            success=False,
-            job_id=job_id,
-            error=(f"File too large: {size_mb:.1f} MB. Maximum is {MAX_FILE_SIZE_MB} MB."),
         )
 
     # Set up job directories
@@ -83,9 +73,22 @@ async def convert_v2(
     input_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save uploaded file
+    # Stream uploaded file to disk in 64KB chunks (avoids OOM on large files)
     file_path = input_dir / filename
-    file_path.write_bytes(content)
+    size_bytes = 0
+    with open(file_path, "wb") as buffer:
+        while chunk := await file.read(64 * 1024):
+            buffer.write(chunk)
+            size_bytes += len(chunk)
+
+    size_mb = size_bytes / (1024 * 1024)
+    if size_mb > MAX_FILE_SIZE_MB:
+        file_path.unlink(missing_ok=True)
+        return ConvertResponse(
+            success=False,
+            job_id=job_id,
+            error=(f"File too large: {size_mb:.1f} MB. Maximum is {MAX_FILE_SIZE_MB} MB."),
+        )
 
     # Run conversion
     result = await convert_document(file_path, template, job_id, output_dir)
@@ -124,24 +127,11 @@ async def stream_v2(
             media_type="text/event-stream",
         )
 
-    filename = file.filename or "document.pdf"
+    filename = Path(file.filename or "document.pdf").name
     ext = Path(filename).suffix.lower()
     if ext not in SUPPORTED_EXTENSIONS:
         error = json.dumps({
             "chunk": f"Unsupported file type: {ext}",
-            "progress": 1.0,
-            "step": "error",
-        })
-        return StreamingResponse(
-            iter([f"data: {error}\n\n"]),
-            media_type="text/event-stream",
-        )
-
-    content = await file.read()
-    size_mb = len(content) / (1024 * 1024)
-    if size_mb > MAX_FILE_SIZE_MB:
-        error = json.dumps({
-            "chunk": f"File too large: {size_mb:.1f} MB. Maximum is {MAX_FILE_SIZE_MB} MB.",
             "progress": 1.0,
             "step": "error",
         })
@@ -156,8 +146,26 @@ async def stream_v2(
     input_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Stream uploaded file to disk in 64KB chunks (avoids OOM on large files)
     file_path = input_dir / filename
-    file_path.write_bytes(content)
+    size_bytes = 0
+    with open(file_path, "wb") as buffer:
+        while chunk := await file.read(64 * 1024):
+            buffer.write(chunk)
+            size_bytes += len(chunk)
+
+    size_mb = size_bytes / (1024 * 1024)
+    if size_mb > MAX_FILE_SIZE_MB:
+        file_path.unlink(missing_ok=True)
+        error = json.dumps({
+            "chunk": f"File too large: {size_mb:.1f} MB. Maximum is {MAX_FILE_SIZE_MB} MB.",
+            "progress": 1.0,
+            "step": "error",
+        })
+        return StreamingResponse(
+            iter([f"data: {error}\n\n"]),
+            media_type="text/event-stream",
+        )
 
     async def event_stream():
         async for event in stream_document(file_path, template, job_id, output_dir):

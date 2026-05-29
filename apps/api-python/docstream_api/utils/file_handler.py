@@ -17,18 +17,21 @@ async def save_upload(file: UploadFile) -> tuple[str, Path]:
     Returns (job_id, pdf_path).
     Raises ValueError if the file is not a valid PDF.
     """
-    contents = await file.read()
-
-    # Validate magic bytes
-    if not contents[:4].startswith(PDF_MAGIC):
-        raise ValueError("Uploaded file is not a valid PDF.")
-
     job_id = uuid.uuid4().hex
     job_dir = TEMP_BASE / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
 
+    # Stream to disk first, then validate magic bytes
     pdf_path = job_dir / "input.pdf"
-    pdf_path.write_bytes(contents)
+    with open(pdf_path, "wb") as buffer:
+        while chunk := await file.read(64 * 1024):
+            buffer.write(chunk)
+
+    # Read first 4 bytes for magic check
+    header = pdf_path.read_bytes()[:4]
+    if not header.startswith(PDF_MAGIC):
+        pdf_path.unlink(missing_ok=True)
+        raise ValueError("Uploaded file is not a valid PDF.")
 
     return job_id, pdf_path
 
