@@ -3,7 +3,7 @@ Format Router — detects input file type and routes to
 the correct format handler for extraction.
 
 Supports: PDF, DOCX, PPTX, images (JPG/PNG),
-          Markdown, plain text (TXT)
+          Markdown, plain text (TXT), LaTeX/TeX (.tex, .latex)
 """
 
 from __future__ import annotations
@@ -27,6 +27,8 @@ class FormatRouter:
         ".md": "markdown",
         ".markdown": "markdown",
         ".txt": "text",
+        ".tex": "latex",
+        ".latex": "latex",
     }
 
     @property
@@ -34,6 +36,7 @@ class FormatRouter:
         """Lazy-import handlers to avoid heavy top-level imports."""
         from docstream.core.format_handlers.docx_handler import DOCXHandler
         from docstream.core.format_handlers.image_handler import ImageHandler
+        from docstream.core.format_handlers.latex_handler import LaTeXHandler
         from docstream.core.format_handlers.markdown_handler import MarkdownHandler
         from docstream.core.format_handlers.pdf_handler import PDFHandler
         from docstream.core.format_handlers.pptx_handler import PPTXHandler
@@ -46,6 +49,7 @@ class FormatRouter:
             "image": ImageHandler,
             "markdown": MarkdownHandler,
             "text": TextHandler,
+            "latex": LaTeXHandler,
         }
 
     def route(self, file_path: Path) -> str:

@@ -20,7 +20,7 @@ from docstream_api.utils.rate_limit import limiter
 
 router = APIRouter()
 
-SUPPORTED_EXTENSIONS = {".pdf"}
+SUPPORTED_EXTENSIONS = {".pdf", ".tex", ".latex"}
 
 
 @router.post(
@@ -37,7 +37,7 @@ async def convert_v2(
     """
     Convert an uploaded document to LaTeX and PDF.
 
-    Supports: PDF
+    Supports: PDF, LaTeX/TeX (.tex, .latex)
     Templates: report, ieee
     """
     job_id = str(uuid.uuid4())
@@ -232,5 +232,7 @@ async def list_formats():
     return {
         "formats": [
             {"extension": ".pdf", "name": "PDF Document"},
+            {"extension": ".tex", "name": "LaTeX Source"},
+            {"extension": ".latex", "name": "LaTeX Source"},
         ]
     }

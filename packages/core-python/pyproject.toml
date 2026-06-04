@@ -39,6 +39,7 @@ dependencies = [
     "ollama>=0.3.0",
     "Pillow>=10.0.0",
     "openai>=2.30.0",
+    "pylatexenc>=2.10",
 ]
 
 [project.optional-dependencies]
