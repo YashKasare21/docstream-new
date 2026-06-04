@@ -36,6 +36,33 @@ async def save_upload(file: UploadFile) -> tuple[str, Path]:
     return job_id, pdf_path
 
 
+async def save_text_upload(file: UploadFile, extension: str = ".tex") -> tuple[str, Path]:
+    """Save an uploaded text-based file (e.g. .tex, .latex) to a temp directory.
+
+    No magic-byte validation — these formats are plain text.
+
+    Args:
+        file: FastAPI ``UploadFile``.
+        extension: Output extension (e.g. ``.tex``, ``.latex``). Must start with ``.``.
+
+    Returns:
+        ``(job_id, file_path)`` where ``file_path`` is the saved file.
+    """
+    if not extension.startswith("."):
+        extension = f".{extension}"
+
+    job_id = uuid.uuid4().hex
+    job_dir = TEMP_BASE / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    file_path = job_dir / f"input{extension}"
+    with open(file_path, "wb") as buffer:
+        while chunk := await file.read(64 * 1024):
+            buffer.write(chunk)
+
+    return job_id, file_path
+
+
 def get_output_dir(job_id: str) -> Path:
     """Return the output directory for a given job, creating it if needed."""
     output_dir = TEMP_BASE / job_id / "output"

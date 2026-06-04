@@ -16,6 +16,7 @@ from slowapi.errors import RateLimitExceeded
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")  # noqa: E402
 
 from docstream_api.database import init_db  # noqa: E402
+from docstream_api.routes.compile import router as compile_router  # noqa: E402
 from docstream_api.routes.convert import router as convert_router  # noqa: E402
 from docstream_api.routes.feedback import router as feedback_router  # noqa: E402
 from docstream_api.routes.health import router as health_router  # noqa: E402
@@ -87,6 +88,7 @@ app.add_middleware(
 )
 
 # Routes
+app.include_router(compile_router)
 app.include_router(convert_router)
 app.include_router(feedback_router)
 app.include_router(health_router)
