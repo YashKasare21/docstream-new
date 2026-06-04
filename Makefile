@@ -72,6 +72,7 @@ install-cli:
 	$(CLI_PIP) install --upgrade pip
 	$(CLI_PIP) install -e $(CORE_DIR)
 	$(CLI_PIP) install -e $(CLI_DIR)
+	$(CLI_PIP) install --force-reinstall --no-deps -e $(CORE_DIR)
 	@echo "✓ CLI installed."
 
 install-api:

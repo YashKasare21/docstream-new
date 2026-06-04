@@ -33,6 +33,7 @@ jobs:
           pip install -e ./packages/core-python
           pip install -e ./apps/cli-python
           pip install -e ./apps/api-python[dev]
+          pip install --force-reinstall --no-deps -e ./packages/core-python
 
       - name: Install Node dependencies
         run: npm ci
