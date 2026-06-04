@@ -3,20 +3,23 @@ Conversion endpoints — PDF to LaTeX via docstream v2.
 """
 
 import json
+import logging
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, Request, UploadFile
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import APIRouter, File, Form, Query, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
-from docstream_api.models.schemas import ConvertResponse
 from docstream_api.services.converter import (
     MAX_FILE_SIZE_MB,
+    OUTPUT_FORMAT_MAP,
     VALID_TEMPLATES,
     convert_document,
     stream_document,
 )
 from docstream_api.utils.rate_limit import limiter
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -25,39 +28,78 @@ SUPPORTED_EXTENSIONS = {".pdf", ".tex", ".latex"}
 
 @router.post(
     "/api/v2/convert",
-    response_model=ConvertResponse,
-    summary="Convert document to LaTeX",
+    summary="Convert document to LaTeX (and optionally re-export via Pandoc)",
 )
 @limiter.limit("5/minute")
 async def convert_v2(
     request: Request,
     file: UploadFile = File(...),
     template: str = Form(default="report"),
+    output_format: str = Query(
+        default="pdf",
+        pattern="^(pdf|docx|html|md|markdown|epub)$",
+        description=(
+            "Final output format. 'pdf' returns the XeLaTeX-compiled PDF; "
+            "all other values are produced by running Pandoc on the "
+            "generated .tex source."
+        ),
+    ),
 ):
     """
-    Convert an uploaded document to LaTeX and PDF.
+    Convert an uploaded document to LaTeX and (optionally) re-export to
+    a different format via Pandoc.
 
     Supports: PDF, LaTeX/TeX (.tex, .latex)
     Templates: report, ieee, resume, altacv, moderncv
+    Output formats: pdf, docx, html, md, markdown, epub
+
+    On success returns the requested file as ``FileResponse``.
+    On failure returns JSON describing the error.
     """
     job_id = str(uuid.uuid4())
 
     # Validate template
     if template not in VALID_TEMPLATES:
-        return ConvertResponse(
-            success=False,
-            job_id=job_id,
-            error=(f"Unknown template '{template}'. Supported: {', '.join(sorted(VALID_TEMPLATES))}"),
+        return JSONResponse(
+            status_code=400,
+            content={
+                "success": False,
+                "job_id": job_id,
+                "error": (
+                    f"Unknown template '{template}'. "
+                    f"Supported: {', '.join(sorted(VALID_TEMPLATES))}"
+                ),
+            },
+        )
+
+    # Validate output format (also enforced by Query pattern, but defence-in-depth)
+    if output_format not in OUTPUT_FORMAT_MAP:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "success": False,
+                "job_id": job_id,
+                "error": (
+                    f"Unknown output_format '{output_format}'. "
+                    f"Supported: {', '.join(sorted(OUTPUT_FORMAT_MAP))}"
+                ),
+            },
         )
 
     # Validate extension (LFI: strip directory components)
     filename = Path(file.filename or "document.pdf").name
     ext = Path(filename).suffix.lower()
     if ext not in SUPPORTED_EXTENSIONS:
-        return ConvertResponse(
-            success=False,
-            job_id=job_id,
-            error=(f"Unsupported file type: {ext}. Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"),
+        return JSONResponse(
+            status_code=400,
+            content={
+                "success": False,
+                "job_id": job_id,
+                "error": (
+                    f"Unsupported file type: {ext}. "
+                    f"Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
+                ),
+            },
         )
 
     # Set up job directories
@@ -78,26 +120,104 @@ async def convert_v2(
     size_mb = size_bytes / (1024 * 1024)
     if size_mb > MAX_FILE_SIZE_MB:
         file_path.unlink(missing_ok=True)
-        return ConvertResponse(
-            success=False,
-            job_id=job_id,
-            error=(f"File too large: {size_mb:.1f} MB. Maximum is {MAX_FILE_SIZE_MB} MB."),
+        return JSONResponse(
+            status_code=400,
+            content={
+                "success": False,
+                "job_id": job_id,
+                "error": (f"File too large: {size_mb:.1f} MB. Maximum is {MAX_FILE_SIZE_MB} MB."),
+            },
         )
 
-    # Run conversion
-    result = await convert_document(file_path, template, job_id, output_dir)
-    return ConvertResponse(**result)
+    # Run conversion (with optional Pandoc post-processing)
+    result = await convert_document(
+        file_path,
+        template,
+        job_id,
+        output_dir,
+        output_format=output_format,
+    )
+
+    if not result["success"]:
+        error_msg = result.get("error", "Conversion failed.")
+
+        # Pandoc missing -> 501 Not Implemented
+        if "Pandoc is not installed" in error_msg:
+            logger.warning("[%s] Pandoc unavailable: %s", job_id, error_msg)
+            return JSONResponse(
+                status_code=501,
+                content={
+                    "success": False,
+                    "job_id": job_id,
+                    "error": error_msg,
+                },
+            )
+
+        # Pandoc failed (e.g. malformed .tex) -> 422 Unprocessable Entity
+        if output_format != "pdf" and "Pandoc" in error_msg:
+            logger.warning("[%s] Pandoc conversion failed: %s", job_id, error_msg)
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "success": False,
+                    "job_id": job_id,
+                    "error": error_msg,
+                },
+            )
+
+        # Generic core-engine failure
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "job_id": job_id,
+                "error": error_msg,
+            },
+        )
+
+    # Success: serve the produced file directly.
+    output_path = Path(result["output_path"])
+    if not output_path.exists():
+        logger.error("[%s] Result claims success but file missing: %s", job_id, output_path)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "job_id": job_id,
+                "error": "Conversion succeeded but output file was not produced.",
+            },
+        )
+
+    _, _, media_type = OUTPUT_FORMAT_MAP[output_format]
+    return FileResponse(
+        path=str(output_path),
+        media_type=media_type,
+        filename=output_path.name,
+        headers={
+            "X-Job-Id": job_id,
+            "X-Output-Format": output_format,
+        },
+    )
 
 
 @router.post(
     "/api/v2/stream",
-    summary="Convert document with real-time SSE streaming",
+    summary="Convert document with real-time SSE streaming (PDF only)",
 )
 @limiter.limit("5/minute")
 async def stream_v2(
     request: Request,
     file: UploadFile = File(...),
     template: str = Form(default="report"),
+    output_format: str = Query(
+        default="pdf",
+        pattern="^(pdf)$",
+        description=(
+            "Stream endpoint is restricted to 'pdf' — binary formats "
+            "(docx, html, etc.) cannot be chunked via SSE. Use "
+            "POST /api/v2/convert?output_format=... for non-PDF exports."
+        ),
+    ),
 ):
     """
     Convert an uploaded document and stream the LaTeX output
@@ -109,6 +229,10 @@ async def stream_v2(
         data: {"chunk": "...", "progress": 0.5}\n\n
 
     The final event carries ``step="done"`` with download URLs.
+
+    Note: the streaming endpoint only supports ``output_format=pdf`` because
+    non-PDF binary exports cannot be meaningfully chunked. To request
+    DOCX/HTML/MD/EPUB, hit ``POST /api/v2/convert`` instead.
     """
     job_id = str(uuid.uuid4())
 

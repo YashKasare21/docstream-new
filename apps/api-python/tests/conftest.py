@@ -2,7 +2,18 @@ import io
 
 import pytest
 from docstream_api.main import app
+from docstream_api.utils.rate_limit import limiter
 from fastapi.testclient import TestClient
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """Clear the slowapi in-memory limiter between tests so the
+    ``5/minute`` cap on the convert endpoint doesn't trip when several
+    test cases exercise it in a row."""
+    limiter.reset()
+    yield
+    limiter.reset()
 
 
 @pytest.fixture

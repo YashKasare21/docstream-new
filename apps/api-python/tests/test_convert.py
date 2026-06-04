@@ -1,6 +1,5 @@
 import io
-from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import docstream
 
@@ -21,23 +20,35 @@ def test_health_endpoint_returns_ok(client):
 def test_convert_unsupported_extension_rejected(client):
     files = {"file": ("test.doc", io.BytesIO(b"hello world"), "application/msword")}
     resp = client.post("/api/v2/convert", files=files, data={"template": "report"})
-    assert resp.status_code == 200
+    assert resp.status_code == 400
     data = resp.json()
     assert data["success"] is False
     assert "Unsupported file type" in data["error"]
 
 
-# ── 3. Valid PDF calls docstream ──
+# ── 3. Valid PDF calls docstream and returns the compiled PDF file ──
 
 
-def test_convert_valid_pdf_calls_docstream(client, sample_pdf_upload, mock_convert_result):
+def test_convert_valid_pdf_returns_pdf_file(
+    client, sample_pdf_upload, mock_convert_result, tmp_path
+):
+    # Point the mock at a real on-disk file so FileResponse can serve it.
+    fake_pdf = tmp_path / "document.pdf"
+    fake_pdf.write_bytes(b"%PDF-1.4 fake")
+    mock_convert_result.pdf_path = str(fake_pdf)
+    mock_convert_result.tex_path = str(tmp_path / "document.tex")
+
     with patch("docstream.convert", return_value=mock_convert_result) as mock_fn:
-        resp = client.post("/api/v2/convert", files=sample_pdf_upload, data={"template": "report"})
-        data = resp.json()
-        assert data["success"] is True
-        assert data["tex_url"] is not None
-        assert data["pdf_url"] is not None
-        mock_fn.assert_called_once()
+        resp = client.post(
+            "/api/v2/convert",
+            files=sample_pdf_upload,
+            data={"template": "report"},
+        )
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.content == b"%PDF-1.4 fake"
+    mock_fn.assert_called_once()
 
 
 # ── 4. Extraction error returns clean message ──
@@ -49,10 +60,12 @@ def test_convert_error_returns_clean_message(client, sample_pdf_upload):
         side_effect=docstream.ExtractionError("raw error"),
     ):
         resp = client.post("/api/v2/convert", files=sample_pdf_upload, data={"template": "report"})
-        data = resp.json()
-        assert data["success"] is False
-        assert "unexpected error" in data["error"]
-        assert "raw error" not in data["error"]
+    # Service swallows exceptions and returns success=False with 500
+    assert resp.status_code == 500
+    data = resp.json()
+    assert data["success"] is False
+    assert "unexpected error" in data["error"]
+    assert "raw error" not in data["error"]
 
 
 # ── 5. Unknown template rejected ──
@@ -60,33 +73,103 @@ def test_convert_error_returns_clean_message(client, sample_pdf_upload):
 
 def test_convert_unknown_template_rejected(client, sample_pdf_upload):
     resp = client.post("/api/v2/convert", files=sample_pdf_upload, data={"template": "unknown"})
+    assert resp.status_code == 400
     data = resp.json()
     assert data["success"] is False
     assert "Unknown template" in data["error"]
 
 
-# ── 6. File served after conversion ──
+# ── 6. Non-PDF output_format runs Pandoc and returns the converted file ──
 
 
-def test_file_served_after_conversion(client, sample_pdf_upload, mock_convert_result, tmp_path):
-    # Create a fake output file
-    fake_output = tmp_path / "document.tex"
-    fake_output.write_text(r"\documentclass{article}")
+def test_convert_docx_output_invokes_pandoc_and_returns_docx(
+    client, sample_pdf_upload, mock_convert_result, tmp_path
+):
+    from docstream_api.services import converter as svc
 
-    with patch("docstream.convert", return_value=mock_convert_result):
-        resp = client.post("/api/v2/convert", files=sample_pdf_upload, data={"template": "report"})
-        data = resp.json()
-        assert data["success"] is True
+    fake_tex = tmp_path / "document.tex"
+    fake_tex.write_text(r"\documentclass{article}\begin{document}Hi\end{document}")
+    fake_docx = tmp_path / "document.docx"
+    fake_docx.write_bytes(b"PK fake-docx-bytes")
+    mock_convert_result.tex_path = str(fake_tex)
+    mock_convert_result.pdf_path = str(tmp_path / "document.pdf")
 
-        # Extract job_id from the tex_url
-        job_id = data["tex_url"].split("/")[-2]
+    with patch("docstream.convert", return_value=mock_convert_result), \
+         patch.object(
+             svc,
+             "convert_with_pandoc",
+             AsyncMock(return_value=fake_docx),
+         ) as mock_pandoc:
+        resp = client.post(
+            "/api/v2/convert?output_format=docx",
+            files=sample_pdf_upload,
+            data={"template": "report"},
+        )
 
-        # Place the file where the serve endpoint expects it
-        output_dir = Path(f"/tmp/docstream/{job_id}/output")
-        output_dir.mkdir(parents=True, exist_ok=True)
-        (output_dir / "document.tex").write_text(r"\documentclass{article}")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    assert resp.content == b"PK fake-docx-bytes"
+    mock_pandoc.assert_called_once()
+    args, _ = mock_pandoc.call_args
+    assert str(args[0]).endswith(".tex")
+    assert args[2] == "docx"
 
-        # Fetch the file
-        file_resp = client.get(data["tex_url"])
-        assert file_resp.status_code == 200
-        assert b"documentclass" in file_resp.content
+
+# ── 7. Pandoc missing -> 501 ──
+
+
+def test_convert_docx_returns_501_when_pandoc_missing(
+    client, sample_pdf_upload, mock_convert_result, tmp_path
+):
+    from docstream.exceptions import RenderingError
+    from docstream_api.services import converter as svc
+
+    fake_tex = tmp_path / "document.tex"
+    fake_tex.write_text(r"\documentclass{article}")
+    mock_convert_result.tex_path = str(fake_tex)
+    mock_convert_result.pdf_path = str(tmp_path / "document.pdf")
+
+    with patch("docstream.convert", return_value=mock_convert_result), \
+         patch.object(
+             svc,
+             "convert_with_pandoc",
+             AsyncMock(side_effect=RenderingError("Pandoc is not installed on the server.")),
+         ):
+        resp = client.post(
+            "/api/v2/convert?output_format=docx",
+            files=sample_pdf_upload,
+            data={"template": "report"},
+        )
+
+    assert resp.status_code == 501
+    data = resp.json()
+    assert data["success"] is False
+    assert "Pandoc" in data["error"]
+
+
+# ── 8. Invalid output_format rejected by query pattern (422) ──
+
+
+def test_convert_invalid_output_format_rejected(client, sample_pdf_upload):
+    resp = client.post(
+        "/api/v2/convert?output_format=mp4",
+        files=sample_pdf_upload,
+        data={"template": "report"},
+    )
+    # FastAPI returns 422 for Query pattern violations
+    assert resp.status_code == 422
+
+
+# ── 9. Stream endpoint restricted to PDF ──
+
+
+def test_stream_rejects_non_pdf_output_format(client, sample_pdf_upload):
+    resp = client.post(
+        "/api/v2/stream?output_format=docx",
+        files=sample_pdf_upload,
+        data={"template": "report"},
+    )
+    # FastAPI returns 422 for Query pattern violations (^(pdf)$)
+    assert resp.status_code == 422
