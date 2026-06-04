@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "skeletons"
 
-VALID_TEMPLATES = {"report", "ieee"}
+VALID_TEMPLATES = {"report", "ieee", "resume", "altacv", "moderncv"}
 
 
 def generate_latex(
@@ -41,7 +41,7 @@ def generate_latex(
 
     Args:
         document: Structured document dict from extract_structured()
-        template: Template name — 'report' or 'ieee'
+        template: Template name — 'report' | 'ieee' | 'resume' | 'altacv' | 'moderncv'
         ai_provider: Optional AIProviderChain instance.
                      If None, creates one automatically.
 

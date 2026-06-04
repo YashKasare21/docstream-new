@@ -38,7 +38,7 @@ async def convert_v2(
     Convert an uploaded document to LaTeX and PDF.
 
     Supports: PDF, LaTeX/TeX (.tex, .latex)
-    Templates: report, ieee
+    Templates: report, ieee, resume, altacv, moderncv
     """
     job_id = str(uuid.uuid4())
 

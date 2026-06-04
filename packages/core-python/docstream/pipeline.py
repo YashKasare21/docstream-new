@@ -98,7 +98,7 @@ class LatexExtractionStage(PipelineStage):
     Expects the following keys in ``data``:
 
     * ``file_path`` — path to the input document
-    * ``template`` — ``"report"`` or ``"ieee"`` (default ``"report"``)
+    * ``template`` — ``"report"``, ``"ieee"``, ``"resume"``, ``"altacv"``, or ``"moderncv"`` (default ``"report"``)
     * ``output_dir`` — output directory (default ``"./docstream_output"``)
     * ``ai_provider`` — optional custom AI provider chain
 

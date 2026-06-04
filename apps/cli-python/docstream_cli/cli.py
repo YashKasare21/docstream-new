@@ -102,7 +102,9 @@ def _cmd_templates_list(_args: argparse.Namespace) -> int:
     templates = {
         "report": "Academic report — article class, 1in margins, serif (lmodern)",
         "ieee": "IEEE two-column conference format (IEEEtran class)",
-        "resume": "Clean resume — compact margins, no section numbers",
+        "resume": "Single-column résumé — clean layout, compact margins",
+        "altacv": "AltaCV two-column sidebar résumé (requires altacv package)",
+        "moderncv": "ModernCV formal CV/résumé (requires moderncv package)",
     }
     print("Available templates:\n")
     for name, desc in templates.items():
@@ -149,9 +151,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--template",
         "-t",
         default="report",
-        choices=["report", "ieee", "resume"],
+        choices=["report", "ieee", "resume", "altacv", "moderncv"],
         metavar="TEMPLATE",
-        help="Output template: report | ieee | resume  (default: report)",
+        help="Output template: report | ieee | resume | altacv | moderncv  (default: report)",
     )
     p_conv.add_argument(
         "--output",

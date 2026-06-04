@@ -16,7 +16,7 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-VALID_TEMPLATES = {"report", "ieee"}
+VALID_TEMPLATES = {"report", "ieee", "resume", "altacv", "moderncv"}
 MAX_FILE_SIZE_MB = 20
 
 

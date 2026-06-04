@@ -1,0 +1,70 @@
+\documentclass[11pt,a4paper]{article}
+% Standard single-column LaTeX résumé.
+% Uses FOSS packages only — no proprietary class files required.
+\usepackage[margin=0.75in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{parskip}
+\usepackage{titlesec}
+
+\setlist[itemize]{leftmargin=*,itemsep=2pt,parsep=0pt,topsep=2pt}
+\titleformat{\section}{\Large\bfseries}{}{0pt}{}[\vspace{-6pt}\hrule\vspace{4pt}]
+\titlespacing*{\section}{0pt}{14pt}{6pt}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue,
+  pdfborder={0 0 0}
+}
+
+\pagestyle{empty}
+
+\begin{document}
+
+% =============================================================================
+% Header — name + contact line
+% =============================================================================
+\begin{center}
+  {\Huge\bfseries <<NAME>>} \\[4pt]
+  <<CONTACT_LINE>>
+\end{center}
+
+% =============================================================================
+% Professional summary
+% =============================================================================
+<<SUMMARY_BLOCK>>
+
+% =============================================================================
+% Experience
+% =============================================================================
+\section{Experience}
+<<EXPERIENCE_BLOCK>>
+
+% =============================================================================
+% Education
+% =============================================================================
+\section{Education}
+<<EDUCATION_BLOCK>>
+
+% =============================================================================
+% Skills
+% =============================================================================
+\section{Skills}
+<<SKILLS_BLOCK>>
+
+% =============================================================================
+% Projects
+% =============================================================================
+\section{Projects}
+<<PROJECTS_BLOCK>>
+
+% =============================================================================
+% Certifications
+% =============================================================================
+<<CERTIFICATIONS_BLOCK>>
+
+\end{document}

@@ -90,7 +90,7 @@ def convert(
 
     Args:
         pdf_path: Path to the input PDF file
-        template: 'report' or 'ieee' (default: 'report')
+        template: 'report' | 'ieee' | 'resume' | 'altacv' | 'moderncv' (default: 'report')
         output_dir: Directory for output files
         ai_provider: Optional custom AI provider chain
 

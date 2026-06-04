@@ -1,0 +1,60 @@
+\documentclass[11pt,a4paper,sans]{moderncv}
+% ModernCV — formal CV/résumé class (FOSS, CTAN).
+% Options: 'sans' (default), 'roman', 'oldstyle' | 'banking', 'classic', 'casual', 'empty', 'fancy'
+% Compatible with: 'blue', 'burgundy', 'green', 'grey', 'orange', 'purple', 'red', 'black'
+\moderncvstyle{banking}
+\moderncvcolor{blue}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{hyperref}
+\usepackage{graphicx}
+
+% Personal information — these macros are filled by the generator.
+\name{<<FIRST_NAME>>}{<<LAST_NAME>>}
+\title{<<TITLE>>}
+\address{<<ADDRESS_STREET>>}{<<ADDRESS_CITY>>}{<<ADDRESS_COUNTRY>>}
+\phone[mobile]{<<PHONE_MOBILE>>}
+\phone[fixed]{<<PHONE_FIXED>>}
+\email{<<EMAIL>>}
+\homepage{<<HOMEPAGE>>}
+\social[linkedin]{<<LINKEDIN>>}
+\social[github]{<<GITHUB>>}
+\extrainfo{<<EXTRA_INFO>>}
+\photo[64pt][0.4pt]{portrait.jpg}      % optional — comment out if no photo
+\quote{<<QUOTE_OR_TAGLINE>>}
+
+\begin{document}
+
+\makecvtitle
+
+% =============================================================================
+% Summary / Profile
+% =============================================================================
+\cvsection{Profile}
+<<SUMMARY_BLOCK>>
+
+% =============================================================================
+% Experience
+% =============================================================================
+\section{Experience}
+\cventry{<<EXP1_FROM>>--<<EXP1_TO>>}{<<EXP1_ROLE>>}{<<EXP1_COMPANY>>}{<<EXP1_LOCATION>>}{}{<<EXP1_DESC>>}
+\cventry{<<EXP2_FROM>>--<<EXP2_TO>>}{<<EXP2_ROLE>>}{<<EXP2_COMPANY>>}{<<EXP2_LOCATION>>}{}{<<EXP2_DESC>>}
+<<EXTRA_EXPERIENCE_ENTRIES>>
+
+% =============================================================================
+% Education
+% =============================================================================
+\section{Education}
+\cventry{<<EDU1_FROM>>--<<EDU1_TO>>}{<<EDU1_DEGREE>>}{<<EDU1_INSTITUTION>>}{<<EDU1_LOCATION>>}{}{<<EDU1_DESC>>}
+<<EXTRA_EDUCATION_ENTRIES>>
+
+% =============================================================================
+% Skills, languages, interests
+% =============================================================================
+\section{Languages}
+\cvitemwithcomment{<<LANG1>>}{<<LANG1_LEVEL>>}{}
+\cvitemwithcomment{<<LANG2>>}{<<LANG2_LEVEL>>}{}
+\cvdoubleitem{<<SKILLS_GROUP_A_NAME>>}{<<SKILLS_GROUP_A_ITEMS>>}{<<SKILLS_GROUP_B_NAME>>}{<<SKILLS_GROUP_B_ITEMS>>}
+\cvitem{Interests}{<<INTERESTS>>}
+
+\end{document}

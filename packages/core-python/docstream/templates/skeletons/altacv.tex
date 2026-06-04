@@ -1,0 +1,58 @@
+\documentclass[10pt,a4paper,withhyper]{altacv}
+% AltaCV — two-column sidebar résumé (FOSS, https://github.com/liantze/AltaCV).
+% Use with XeLaTeX or LuaLaTeX.
+\usepackage[margin=1.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{xcolor}
+
+% Theme — pick one of: "breezeDark", "breezeLight", "materialdark", "material",
+% "monokai", "pagecolor", "redwaves"
+\colorlet{accent}{blue!70!black}
+\colorlet{emphasis}{black}
+\colorlet{heading}{black}
+\colorlet{subheading}{black!75}
+\renewcommand{\cvitemmarker}{{\small\textbullet}}
+\renewcommand{\cvskillmarker}{{\small\textbullet}}
+
+\pagestyle{empty}
+
+\begin{document}
+
+% =============================================================================
+% Sidebar (left column)
+% =============================================================================
+\cvsection{<<NAME>>}
+% Personal photo (optional, comment out if not desired)
+% \photo[circle,edge,radius=2cm]{portrait.jpg}
+\cvsection{Contact}
+\begin{leftcolumn}
+<<SIDEBAR_CONTACT>>
+\end{leftcolumn}
+
+\cvsection{Skills}
+\begin{leftcolumn}
+<<SIDEBAR_SKILLS>>
+\end{leftcolumn}
+
+\cvsection{Languages}
+\begin{leftcolumn}
+<<SIDEBAR_LANGUAGES>>
+\end{leftcolumn}
+
+% =============================================================================
+% Main column
+% =============================================================================
+\cvsection{About}
+<<SUMMARY_BLOCK>>
+
+\cvsection{Experience}
+<<EXPERIENCE_BLOCK>>
+
+\cvsection{Education}
+<<EDUCATION_BLOCK>>
+
+\end{document}
