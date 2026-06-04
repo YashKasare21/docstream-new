@@ -32,6 +32,11 @@ DocStream isn't just a document converter—it's a blueprint for modern full-sta
 - **AI-Powered Extraction:** Leverages LLMs (Gemini/Groq) to intelligently structure complex PDFs into LaTeX.
 - **Dual Interface:** Powerful CLI for automation + Intuitive Next.js Web UI for end-users.
 - **Plugin Architecture:** Extensible pipeline system. Write a Python class and inject it into the processing stream without touching core code.
+- **LaTeX Input & Re-templating:** Upload `.tex` files to parse, re-structure, and apply new templates (e.g., convert a report to a modern CV).
+- **Standalone Compile API:** Direct `/api/v2/compile` endpoint to turn `.tex` files into PDFs via XeLaTeX.
+- **Multi-Format Export:** Export converted documents to DOCX, HTML, Markdown, or EPUB via Pandoc.
+- **Equation OCR Plugin:** Extract mathematical equations from images using the open-source `pix2tex` library via a drop-in Pipeline Stage.
+- **Five Built-In Templates:** `report`, `ieee`, `resume`, `altacv`, and `moderncv` — pick the layout that fits the document.
 - **Hybrid Monorepo:** Python core engine + Next.js frontend, managed seamlessly together.
 - **One-Command Deploy:** Fully containerized with Docker Compose for zero-friction local deployment.
 
@@ -49,7 +54,10 @@ graph TD
     D --> E[Pipeline Stage 1: Parser]
     D --> F[Pipeline Stage 2: AI Structurer]
     D --> G[Pipeline Stage 3: Custom Plugin]
-    F --> H[LLM Providers: Groq / Gemini / Ollama]
+    D --> H[Format Router - PDF, LaTeX, DOCX, MD, ...]
+    D --> I[Pandoc Multi-Format Exporter]
+    F --> J[LLM Providers: Groq / Gemini / Ollama]
+    G --> K[EquationOCRStage - pix2tex]
 ```
 
 ---
@@ -94,7 +102,19 @@ Access the **Web UI** at [http://localhost:3000](http://localhost:3000) and the 
 
 ## 🧩 Creating a Plugin
 
-DocStream uses a simple pipeline architecture. You can add custom processing stages (e.g., PII Redaction, Summarization) by implementing the `PipelineStage` interface:
+DocStream uses a simple pipeline architecture. Drop a custom stage into the processing stream and DocStream will pass every block of content through it. Here is a real-world example — the **equation OCR** stage that ships with DocStream v1.1.0:
+
+```python
+from docstream.plugins import EquationOCRStage
+from docstream.pipeline import Pipeline
+
+# Walk every IMAGE block in the document, run pix2tex, and emit a CODE
+# block carrying the predicted LaTeX (wrapped in $...$ or $$...$$).
+pipeline = Pipeline([EquationOCRStage()])
+result = pipeline.run({"blocks": extracted_blocks})
+```
+
+Or build your own from scratch:
 
 ```python
 from docstream.pipeline import PipelineStage
@@ -110,6 +130,37 @@ class MyCustomStage(PipelineStage):
         data["text"] = text.upper()
         return data
 ```
+
+---
+
+## 🌐 API Endpoints
+
+All endpoints live under the `/api/v2` prefix and are documented in OpenAPI at `/docs`.
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v2/convert` | Convert a document to LaTeX + final output. Accepts **PDF, `.tex`, `.latex`** input. `?output_format=pdf \| docx \| html \| md \| markdown \| epub` controls the returned file. |
+| `POST` | `/api/v2/stream` | Real-time **SSE** streaming of the LaTeX generation (PDF output only). |
+| `POST` | `/api/v2/compile` | Standalone **`.tex` → `.pdf`** compilation via XeLaTeX — no AI step. |
+| `GET`  | `/api/v2/files/{job_id}/{filename}` | Download a previously-generated `.tex` or `.pdf` artifact. |
+| `GET`  | `/api/v2/formats` | List supported input formats. |
+| `POST` | `/api/v2/feedback` | Submit a 👍/👎 rating for a finished job. |
+| `GET`  | `/api/v2/providers` | List configured AI providers. |
+| `GET`  | `/api/health` | Liveness probe. |
+
+---
+
+## 🗺️ Roadmap
+
+### v1.1.0 — Shipped
+- [x] **LaTeX Input & Re-templating** — `.tex` / `.latex` parsing via the format router
+- [x] **Standalone Compile API** — `/api/v2/compile`
+- [x] **Multi-Format Export** — Pandoc-backed DOCX / HTML / MD / EPUB routing
+- [x] **Equation OCR Plugin** — pix2tex-backed `EquationOCRStage`
+- [x] **Resume / AltaCV / ModernCV templates** — unlocked end-to-end
+
+### v2.0 — Next Major
+- [ ] **Authentication & Job History:** Integrate NextAuth.js and SQLAlchemy to persist conversion history and allow users to redownload past jobs.
 
 ---
 
