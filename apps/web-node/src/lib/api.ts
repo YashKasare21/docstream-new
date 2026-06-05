@@ -238,3 +238,56 @@ export async function compileLatexText(
   const file = new File([texCode], `${safeName}.tex`, { type: "application/x-tex" });
   return compileLatex(file);
 }
+
+export interface BatchAcceptedResponse {
+  success: boolean;
+  batch_id: string;
+  queued: number;
+  skipped: string[];
+  job_ids: string[];
+  message: string;
+}
+
+/**
+ * Upload a zip archive of documents to the batch endpoint.
+ *
+ * The server extracts the archive, validates each entry, creates a
+ * ``Job`` row per supported file, and processes them in the
+ * background. The response is immediate (``202 Accepted``) and
+ * contains the list of ``job_id``s the user can watch on the
+ * History page.
+ */
+export async function batchConvert(
+  file: File,
+  userId?: string,
+  options?: { template?: string; outputFormat?: string },
+): Promise<BatchAcceptedResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const params = new URLSearchParams();
+  if (options?.template) params.set("template", options.template);
+  if (options?.outputFormat) params.set("output_format", options.outputFormat);
+  const query = params.toString() ? `?${params.toString()}` : "";
+
+  const response = await fetch(`${API_BASE_URL}/api/v2/batch${query}`, {
+    method: "POST",
+    body: formData,
+    headers: buildHeaders(userId),
+  });
+
+  if (!response.ok) {
+    let detail = `Server error: ${response.status} ${response.statusText}`;
+    try {
+      const errBody = await response.json();
+      if (errBody?.detail) {
+        detail = typeof errBody.detail === "string" ? errBody.detail : JSON.stringify(errBody.detail);
+      }
+    } catch {
+      // body wasn't JSON; keep the generic message
+    }
+    throw new Error(detail);
+  }
+
+  return (await response.json()) as BatchAcceptedResponse;
+}

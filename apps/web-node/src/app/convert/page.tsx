@@ -17,6 +17,7 @@ import OutputFormatSelector, {
 import LatexEditor from "@/components/convert/LatexEditor";
 import PdfPreview from "@/components/convert/PdfPreview";
 import {
+  batchConvert,
   checkHealth,
   compileLatexText,
   convertDocument,
@@ -128,6 +129,31 @@ export default function ConvertPage() {
   const handleConvert = useCallback(async () => {
     if (state.status !== "file_selected") return;
 
+    // Batch path: zip archive → /api/v2/batch. The server returns
+    // 202 immediately and processes files in the background, so we
+    // surface a toast and let the user track progress on /history.
+    if (selectedFormat === ".zip") {
+      try {
+        const result = await batchConvert(state.file, userId, {
+          template,
+          outputFormat,
+        });
+        if (typeof window !== "undefined") {
+          window.alert(
+            `Batch uploaded! ${result.queued} document(s) queued for conversion. Check your History page for progress.`,
+          );
+        }
+        // Reset to idle so the user can upload another archive.
+        dispatch({ type: "RESET" });
+      } catch (err) {
+        dispatch({
+          type: "FAIL",
+          message: err instanceof Error ? err.message : "An unexpected error occurred.",
+        });
+      }
+      return;
+    }
+
     dispatch({ type: "START_PROCESSING", template, outputFormat });
 
     try {
@@ -166,7 +192,7 @@ export default function ConvertPage() {
         message: err instanceof Error ? err.message : "An unexpected error occurred.",
       });
     }
-  }, [state, template, outputFormat, canStream, userId]);
+  }, [state, template, outputFormat, canStream, userId, selectedFormat]);
 
   const handleRecompile = useCallback(async () => {
     if (state.status !== "complete" || !canStream) return;
