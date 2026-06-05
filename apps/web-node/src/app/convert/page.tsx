@@ -3,6 +3,7 @@
 import { useReducer, useState, useCallback, useEffect, useRef } from "react";
 import { ArrowLeft, ArrowRight, AlertTriangle, Info, Play, RotateCcw } from "lucide-react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import DropZone from "@/components/convert/DropZone";
 import TemplateSelector from "@/components/convert/TemplateSelector";
 import ProgressTracker from "@/components/convert/ProgressTracker";
@@ -92,6 +93,8 @@ export default function ConvertPage() {
   const [selectedFormat, setSelectedFormat] = useState(".pdf");
   const [outputFormat, setOutputFormat] = useState<OutputFormat>("pdf");
   const [backendUp, setBackendUp] = useState<boolean | null>(null);
+  const { data: session } = useSession();
+  const userId = session?.user?.email ?? undefined;
 
   // ── Editor mode state ──
   const [texCode, setTexCode] = useState<string>("");
@@ -137,6 +140,8 @@ export default function ConvertPage() {
             accumulated += event.chunk;
             dispatch({ type: "STREAM_CHUNK", chunk: event.chunk, progress: event.progress });
           },
+          undefined,
+          userId,
         );
         dispatch({ type: "COMPLETE", result, texCode: accumulated });
       } else {
@@ -151,6 +156,7 @@ export default function ConvertPage() {
             }
           },
           outputFormat,
+          userId,
         );
         dispatch({ type: "COMPLETE", result, texCode: "" });
       }
@@ -160,7 +166,7 @@ export default function ConvertPage() {
         message: err instanceof Error ? err.message : "An unexpected error occurred.",
       });
     }
-  }, [state, template, outputFormat, canStream]);
+  }, [state, template, outputFormat, canStream, userId]);
 
   const handleRecompile = useCallback(async () => {
     if (state.status !== "complete" || !canStream) return;

@@ -35,6 +35,7 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(256), nullable=False, default="anonymous")
     input_filename: Mapped[str] = mapped_column(String(512), nullable=False)
     template: Mapped[str] = mapped_column(String(64), nullable=False)
     output_format: Mapped[str] = mapped_column(String(16), nullable=False, default="pdf")
@@ -60,6 +61,7 @@ class Job(Base):
         """
         return {
             "id": self.id,
+            "user_id": self.user_id,
             "input_filename": self.input_filename,
             "template": self.template,
             "output_format": self.output_format,

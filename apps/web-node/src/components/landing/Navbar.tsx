@@ -1,17 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileCode, Menu, X, Zap, Moon, Sun } from "lucide-react";
+import { FileCode, Menu, X, Zap, Moon, Sun, LogIn, LogOut, History } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/lib/theme-provider";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { theme, toggle } = useTheme();
   const pathname = usePathname();
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === "authenticated";
+  const userEmail = session?.user?.email ?? null;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -82,6 +86,44 @@ export default function Navbar() {
             >
               Convert PDF
             </Link>
+            {/* History link — only when signed in */}
+            {isAuthenticated && (
+              <Link
+                href="/history"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 inline-flex items-center gap-1"
+              >
+                <History className="w-4 h-4" />
+                History
+              </Link>
+            )}
+            {/* Auth controls */}
+            {isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-xs text-muted-foreground max-w-[140px] truncate"
+                  title={userEmail ?? ""}
+                >
+                  {userEmail}
+                </span>
+                <button
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                  className="text-sm font-medium text-muted-foreground border border-border hover:border-blue-500/40 px-3 py-2 rounded-lg transition-all duration-200 hover:text-foreground inline-flex items-center gap-1"
+                  aria-label="Sign out"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => signIn(undefined, { callbackUrl: "/convert" })}
+                className="text-sm font-medium text-foreground border border-blue-500/40 hover:bg-blue-500/10 px-3 py-2 rounded-lg transition-all duration-200 inline-flex items-center gap-1"
+                aria-label="Sign in"
+              >
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </button>
+            )}
             {/* Dark mode toggle */}
             <button
               onClick={toggle}
@@ -149,6 +191,39 @@ export default function Navbar() {
                 >
                   Convert PDF
                 </Link>
+                {isAuthenticated && (
+                  <Link
+                    href="/history"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-sm text-muted-foreground hover:text-foreground py-2 inline-flex items-center justify-center gap-2"
+                  >
+                    <History className="w-4 h-4" />
+                    History
+                  </Link>
+                )}
+                {isAuthenticated ? (
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      signOut({ callbackUrl: "/" });
+                    }}
+                    className="text-sm text-muted-foreground border border-border px-4 py-2 rounded-lg hover:text-foreground hover:border-blue-500/40 transition-all inline-flex items-center justify-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out ({userEmail})
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      signIn(undefined, { callbackUrl: "/convert" });
+                    }}
+                    className="text-sm text-foreground border border-blue-500/40 px-4 py-2 rounded-lg hover:bg-blue-500/10 transition-all inline-flex items-center justify-center gap-2"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Sign In
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>

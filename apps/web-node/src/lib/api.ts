@@ -12,11 +12,25 @@ export interface ConvertResult {
   error?: string;
 }
 
+/**
+ * Build the standard headers used by every backend call. Includes
+ * ``x-user-id`` when an identifier is provided so the API can scope
+ * the resulting job to that user.
+ */
+function buildHeaders(userId?: string): HeadersInit {
+  const headers: Record<string, string> = {};
+  if (userId) {
+    headers["x-user-id"] = userId;
+  }
+  return headers;
+}
+
 export async function convertDocument(
   file: File,
   template: string,
   onProgress?: (stage: number) => void,
   output_format?: string,
+  userId?: string,
 ): Promise<ConvertResult> {
   const formData = new FormData();
   formData.append("file", file);
@@ -28,6 +42,7 @@ export async function convertDocument(
   const response = await fetch(`${API_BASE_URL}/api/v2/convert${query}`, {
     method: "POST",
     body: formData,
+    headers: buildHeaders(userId),
     // No Content-Type header — browser sets it with multipart boundary
   });
 
@@ -90,6 +105,7 @@ export async function streamDocument(
   template: string,
   onChunk: (event: StreamEvent) => void,
   signal?: AbortSignal,
+  userId?: string,
 ): Promise<ConvertResult> {
   const formData = new FormData();
   formData.append("file", file);
@@ -98,6 +114,7 @@ export async function streamDocument(
   const response = await fetch(`${API_BASE_URL}/api/v2/stream`, {
     method: "POST",
     body: formData,
+    headers: buildHeaders(userId),
     signal,
   });
 

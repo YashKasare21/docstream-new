@@ -177,6 +177,32 @@ def test_get_unknown_job_returns_404(fresh_jobs_db):
     assert resp.status_code == 404
 
 
+def test_user_id_header_tags_job(fresh_jobs_db):
+    """``x-user-id`` header should be persisted on the Job row."""
+    _db_module, main_module, _path = fresh_jobs_db
+    client = TestClient(main_module.app)
+    resp = client.post(
+        "/api/v2/convert",
+        headers={"x-user-id": "alice@example.com"},
+        files={"file": ("hello.pdf", _io(b"%PDF-1.4\n%%EOF\n"), "application/pdf")},
+        data={"template": "report"},
+    )
+    assert resp.status_code in (200, 500)  # body irrelevant — only DB tag matters
+
+    listing = client.get("/api/v2/jobs?user_id=alice@example.com").json()
+    assert listing["count"] == 1
+    assert listing["jobs"][0]["user_id"] == "alice@example.com"
+
+    # And filtering by another user returns nothing.
+    other = client.get("/api/v2/jobs?user_id=bob@example.com").json()
+    assert other["count"] == 0
+
+    # Anonymous fallback still works.
+    anon = client.get("/api/v2/jobs").json()
+    assert anon["count"] == 1
+    assert anon["jobs"][0]["user_id"] == "alice@example.com"
+
+
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 

@@ -50,8 +50,19 @@ SUPPORTED_EXTENSIONS = {".pdf", ".tex", ".latex"}
 # ── Job-persistence helpers ───────────────────────────────────────────────────
 
 
-def _create_job(job_id: str, input_filename: str, template: str, output_format: str) -> None:
+def _create_job(
+    job_id: str,
+    input_filename: str,
+    template: str,
+    output_format: str,
+    user_id: str = "anonymous",
+) -> None:
     """Insert a new ``Job`` row in ``processing`` state.
+
+    ``user_id`` is typically the caller's email (passed via the
+    ``x-user-id`` header from the Next.js frontend after NextAuth sign-
+    in). Unauthenticated callers fall back to ``"anonymous"`` so
+    pre-login conversions still appear in history.
 
     Failures are logged but never bubble up — a missing DB row should
     not block the user-facing conversion flow.
@@ -61,6 +72,7 @@ def _create_job(job_id: str, input_filename: str, template: str, output_format: 
             db.add(
                 Job(
                     id=job_id,
+                    user_id=user_id,
                     input_filename=input_filename,
                     template=template,
                     output_format=output_format,
@@ -198,7 +210,8 @@ async def convert_v2(
 
     # Record the job in the DB before doing any work so it always
     # appears in history (even if the upload is interrupted).
-    _create_job(job_id, filename, template, output_format)
+    user_id = request.headers.get("x-user-id") or "anonymous"
+    _create_job(job_id, filename, template, output_format, user_id=user_id)
 
     # Set up job directories
     job_dir = Path(f"/tmp/docstream/{job_id}")
@@ -383,7 +396,8 @@ async def stream_v2(
 
     # Record the job up-front so it shows up in /api/v2/jobs even if
     # the client disconnects mid-stream.
-    _create_job(job_id, filename, template, output_format)
+    user_id = request.headers.get("x-user-id") or "anonymous"
+    _create_job(job_id, filename, template, output_format, user_id=user_id)
 
     job_dir = Path(f"/tmp/docstream/{job_id}")
     input_dir = job_dir / "input"

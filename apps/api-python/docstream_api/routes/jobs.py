@@ -41,25 +41,37 @@ def _build_download_urls(job: Job) -> dict[str, str | None]:
 @router.get("/api/v2/jobs", summary="List recent conversion jobs")
 def list_jobs(
     limit: int = 50,
+    user_id: str | None = None,
     db: Session = Depends(get_db),
 ) -> dict:
     """Return up to ``limit`` jobs ordered by ``created_at`` descending.
 
     Args:
         limit: Maximum number of rows to return (default 50, capped at 200).
+        user_id: Optional filter — when provided, only jobs whose
+            ``user_id`` column matches are returned. The frontend
+            passes the logged-in user's email here so each user sees
+            their own history.
         db: FastAPI-injected SQLAlchemy session.
     """
     capped_limit = max(1, min(limit, 200))
-    rows = (
-        db.execute(
-            select(Job).order_by(Job.created_at.desc()).limit(capped_limit)
+    stmt = select(Job).order_by(Job.created_at.desc()).limit(capped_limit)
+    if user_id:
+        stmt = (
+            select(Job)
+            .where(Job.user_id == user_id)
+            .order_by(Job.created_at.desc())
+            .limit(capped_limit)
         )
-        .scalars()
-        .all()
-    )
+    rows = db.execute(stmt).scalars().all()
+    jobs = []
+    for row in rows:
+        payload = row.to_dict()
+        payload.update(_build_download_urls(row))
+        jobs.append(payload)
     return {
         "count": len(rows),
-        "jobs": [row.to_dict() for row in rows],
+        "jobs": jobs,
     }
 
 
