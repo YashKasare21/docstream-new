@@ -41,6 +41,9 @@ def fresh_jobs_db(tmp_path: Path, monkeypatch):
     """Point the SQLAlchemy engine at a fresh DB for the duration of a test."""
     db_path = tmp_path / "jobs.db"
     monkeypatch.setenv("DOCSTREAM_DB_PATH", str(db_path))
+    # CI runners don't have xelatex; tell the lifespan guard it's OK
+    # to start without it.
+    monkeypatch.setenv("DOCSTREAM_ENV", "test")
 
     # Re-import so the module-level engine rebinds with the new env var.
     import importlib

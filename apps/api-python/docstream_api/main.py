@@ -84,7 +84,12 @@ async def lifespan(app: FastAPI):
     logger.info(f"xelatex location: {result.stdout.strip()}")
     logger.info(f"xelatex found: {bool(result.stdout.strip())}")
     if not result.stdout.strip():
-        raise RuntimeError("xelatex binary not found. DocStream cannot start.")
+        if os.environ.get("DOCSTREAM_ENV") != "test":
+            raise RuntimeError("xelatex binary not found. DocStream cannot start.")
+        logger.warning(
+            "xelatex binary not found, but DOCSTREAM_ENV=test. "
+            "Starting anyway (compilation will fail).",
+        )
 
     # Attach rate limiter to app state
     app.state.limiter = limiter

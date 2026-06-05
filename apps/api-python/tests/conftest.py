@@ -1,9 +1,17 @@
 import io
+import os
 
 import pytest
 from docstream_api.main import app
 from docstream_api.utils.rate_limit import limiter
 from fastapi.testclient import TestClient
+
+# CI runners don't ship XeLaTeX. The lifespan guard in
+# ``docstream_api.main`` treats ``DOCSTREAM_ENV=test`` as a "soft
+# start" signal so the FastAPI app boots even when xelatex is
+# missing. Set it once at import time so every TestClient (including
+# the ones in test_jobs.py) bypasses the hard stop.
+os.environ.setdefault("DOCSTREAM_ENV", "test")
 
 
 @pytest.fixture(autouse=True)
