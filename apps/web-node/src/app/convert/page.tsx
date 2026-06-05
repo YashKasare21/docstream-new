@@ -1,7 +1,7 @@
 "use client";
 
-import { useReducer, useState, useCallback, useEffect } from "react";
-import { ArrowLeft, ArrowRight, AlertTriangle, Info } from "lucide-react";
+import { useReducer, useState, useCallback, useEffect, useRef } from "react";
+import { ArrowLeft, ArrowRight, AlertTriangle, Info, Play, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import DropZone from "@/components/convert/DropZone";
 import TemplateSelector from "@/components/convert/TemplateSelector";
@@ -13,8 +13,11 @@ import OutputFormatSelector, {
   OUTPUT_FORMAT_OPTIONS,
   type OutputFormat,
 } from "@/components/convert/OutputFormatSelector";
+import LatexEditor from "@/components/convert/LatexEditor";
+import PdfPreview from "@/components/convert/PdfPreview";
 import {
   checkHealth,
+  compileLatexText,
   convertDocument,
   streamDocument,
   type ConvertResult,
@@ -34,7 +37,7 @@ type State =
       accumulated: string;
       progress: number;
     }
-  | { status: "complete"; result: ConvertResult }
+  | { status: "complete"; result: ConvertResult; texCode: string }
   | { status: "error"; message: string };
 
 type Action =
@@ -42,7 +45,7 @@ type Action =
   | { type: "REMOVE_FILE" }
   | { type: "START_PROCESSING"; template: string; outputFormat: OutputFormat }
   | { type: "STREAM_CHUNK"; chunk: string; progress: number }
-  | { type: "COMPLETE"; result: ConvertResult }
+  | { type: "COMPLETE"; result: ConvertResult; texCode: string }
   | { type: "FAIL"; message: string }
   | { type: "RESET" };
 
@@ -73,7 +76,7 @@ function reducer(state: State, action: Action): State {
       };
     }
     case "COMPLETE":
-      return { status: "complete", result: action.result };
+      return { status: "complete", result: action.result, texCode: action.texCode };
     case "FAIL":
       return { status: "error", message: action.message };
     case "RESET":
@@ -90,6 +93,13 @@ export default function ConvertPage() {
   const [outputFormat, setOutputFormat] = useState<OutputFormat>("pdf");
   const [backendUp, setBackendUp] = useState<boolean | null>(null);
 
+  // ── Editor mode state ──
+  const [texCode, setTexCode] = useState<string>("");
+  const [editorPdfUrl, setEditorPdfUrl] = useState<string>("");
+  const [isRecompiling, setIsRecompiling] = useState(false);
+  const [recompileError, setRecompileError] = useState<string | null>(null);
+  const editorVersionRef = useRef(0);
+
   // Check backend availability once on mount
   useEffect(() => {
     checkHealth().then(setBackendUp);
@@ -101,6 +111,16 @@ export default function ConvertPage() {
   // standard POST /api/v2/convert endpoint.
   const canStream = outputFormat === "pdf";
   const outputFormatMeta = OUTPUT_FORMAT_OPTIONS.find((o) => o.id === outputFormat);
+  const isEditorMode = state.status === "complete" && canStream;
+
+  // Promote streaming text into editor state once conversion completes.
+  useEffect(() => {
+    if (state.status === "complete" && canStream) {
+      setTexCode(state.texCode);
+      setEditorPdfUrl(state.result.pdf_url);
+      setRecompileError(null);
+    }
+  }, [state, canStream]);
 
   const handleConvert = useCallback(async () => {
     if (state.status !== "file_selected") return;
@@ -108,23 +128,32 @@ export default function ConvertPage() {
     dispatch({ type: "START_PROCESSING", template, outputFormat });
 
     try {
-      const result = canStream
-        ? await streamDocument(state.file, template, (event: StreamEvent) => {
+      if (canStream) {
+        let accumulated = "";
+        const result = await streamDocument(
+          state.file,
+          template,
+          (event: StreamEvent) => {
+            accumulated += event.chunk;
             dispatch({ type: "STREAM_CHUNK", chunk: event.chunk, progress: event.progress });
-          })
-        : await convertDocument(
-            state.file,
-            template,
-            (stage) => {
-              if (stage === 1) {
-                dispatch({ type: "STREAM_CHUNK", chunk: "", progress: 0.2 });
-              } else if (stage === 3) {
-                dispatch({ type: "STREAM_CHUNK", chunk: "", progress: 1 });
-              }
-            },
-            outputFormat,
-          );
-      dispatch({ type: "COMPLETE", result });
+          },
+        );
+        dispatch({ type: "COMPLETE", result, texCode: accumulated });
+      } else {
+        const result = await convertDocument(
+          state.file,
+          template,
+          (stage) => {
+            if (stage === 1) {
+              dispatch({ type: "STREAM_CHUNK", chunk: "", progress: 0.2 });
+            } else if (stage === 3) {
+              dispatch({ type: "STREAM_CHUNK", chunk: "", progress: 1 });
+            }
+          },
+          outputFormat,
+        );
+        dispatch({ type: "COMPLETE", result, texCode: "" });
+      }
     } catch (err) {
       dispatch({
         type: "FAIL",
@@ -132,6 +161,34 @@ export default function ConvertPage() {
       });
     }
   }, [state, template, outputFormat, canStream]);
+
+  const handleRecompile = useCallback(async () => {
+    if (state.status !== "complete" || !canStream) return;
+    setIsRecompiling(true);
+    setRecompileError(null);
+    const version = ++editorVersionRef.current;
+    try {
+      const jobName = state.result.job_id || "document";
+      const { url } = await compileLatexText(texCode, jobName);
+      // Guard against stale requests: only apply the latest result.
+      if (version !== editorVersionRef.current) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+      setEditorPdfUrl((prev) => {
+        if (prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+        return url;
+      });
+    } catch (err) {
+      if (version === editorVersionRef.current) {
+        setRecompileError(err instanceof Error ? err.message : "Recompile failed.");
+      }
+    } finally {
+      if (version === editorVersionRef.current) {
+        setIsRecompiling(false);
+      }
+    }
+  }, [state, texCode, canStream]);
 
   const isInputVisible = state.status === "idle" || state.status === "file_selected";
 
@@ -223,7 +280,9 @@ export default function ConvertPage() {
                   onClick={handleConvert}
                   className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-base transition-all duration-200 shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40"
                 >
-                  {outputFormat === "pdf" ? "Convert to LaTeX" : `Convert to ${outputFormatMeta?.label ?? outputFormat}`}
+                  {outputFormat === "pdf"
+                    ? "Convert to LaTeX"
+                    : `Convert to ${outputFormatMeta?.label ?? outputFormat}`}
                   <ArrowRight className="w-4 h-4" />
                 </button>
               )}
@@ -272,8 +331,70 @@ export default function ConvertPage() {
             </div>
           )}
 
-          {/* Complete */}
-          {state.status === "complete" && (
+          {/* Complete — Editor Mode (PDF only) */}
+          {isEditorMode && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Live editor</h2>
+                  <p className="text-xs text-slate-400">
+                    Edit your LaTeX on the left, recompile to refresh the PDF preview.
+                  </p>
+                </div>
+                <button
+                  onClick={handleRecompile}
+                  disabled={isRecompiling}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-medium text-sm transition-all duration-200 shadow-lg shadow-blue-900/20"
+                >
+                  <Play className={`w-3.5 h-3.5 ${isRecompiling ? "animate-pulse" : ""}`} />
+                  {isRecompiling ? "Recompiling..." : "Recompile"}
+                </button>
+              </div>
+
+              {recompileError && (
+                <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium">LaTeX compilation failed</p>
+                    <p className="text-xs text-red-300/80 mt-1 whitespace-pre-wrap">
+                      {recompileError}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div
+                className="grid gap-3"
+                style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)" }}
+              >
+                <div className="h-[640px] min-h-[400px]">
+                  <LatexEditor texCode={texCode} onCodeChange={setTexCode} />
+                </div>
+                <div className="h-[640px] min-h-[400px]">
+                  <PdfPreview
+                    pdfUrl={editorPdfUrl}
+                    loadingHint={isRecompiling ? "Recompiling..." : undefined}
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setTexCode("");
+                  setEditorPdfUrl("");
+                  setRecompileError(null);
+                  dispatch({ type: "RESET" });
+                }}
+                className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Convert another document
+              </button>
+            </div>
+          )}
+
+          {/* Complete — Non-PDF (single file download) */}
+          {state.status === "complete" && !canStream && (
             <ResultCard
               texUrl={state.result.tex_url}
               pdfUrl={state.result.pdf_url}

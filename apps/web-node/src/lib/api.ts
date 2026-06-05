@@ -208,3 +208,16 @@ export async function compileLatex(file: File): Promise<{ blob: Blob; url: strin
 
   return { blob, url, filename };
 }
+
+/**
+ * Wrap a raw LaTeX string in a `File` and send it to the compile endpoint.
+ * Used by the in-browser editor's "Recompile" button.
+ */
+export async function compileLatexText(
+  texCode: string,
+  jobName = "document",
+): Promise<{ blob: Blob; url: string; filename: string }> {
+  const safeName = jobName.replace(/[^A-Za-z0-9._-]/g, "_") || "document";
+  const file = new File([texCode], `${safeName}.tex`, { type: "application/x-tex" });
+  return compileLatex(file);
+}
