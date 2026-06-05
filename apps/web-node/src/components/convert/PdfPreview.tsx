@@ -70,6 +70,7 @@ export default function PdfPreview({ pdfUrl, loadingHint }: PdfPreviewProps) {
 
   // Reset error when URL changes (e.g. after a recompile).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when PDF URL changes
     setLoadError(null);
   }, [pdfUrl]);
 
