@@ -1,11 +1,12 @@
-# 📄 DocStream
+# 📄 DocStream v2.0
 
-> High-performance, AI-powered document processing engine with real-time streaming and a modular plugin architecture.
+> High-performance, AI-powered document processing engine with real-time streaming, a modular plugin architecture, live LaTeX editing, and persistent user job history.
 
 [![CI](https://github.com/YashKasare21/docstream-new/actions/workflows/ci.yml/badge.svg)](https://github.com/YashKasare21/docstream-new/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black.svg)](https://nextjs.org/)
+[![Version](https://img.shields.io/badge/version-v2.0-blue.svg)](https://github.com/YashKasare21/docstream-new/releases)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ---
@@ -30,13 +31,16 @@ DocStream isn't just a document converter—it's a blueprint for modern full-sta
 
 - **Real-Time Streaming:** Watch documents process chunk-by-chunk via Server-Sent Events (SSE), enabling chunk-by-chunk document delivery and real-time progress tracking.
 - **AI-Powered Extraction:** Leverages LLMs (Gemini/Groq) to intelligently structure complex PDFs into LaTeX.
-- **Dual Interface:** Powerful CLI for automation + Intuitive Next.js Web UI for end-users.
+- **Live LaTeX Editor:** Browser-based Monaco editor with side-by-side PDF preview — tweak the generated `.tex` and recompile to PDF with a single click.
+- **User Authentication & Persistent Job History:** Sign in with NextAuth (Credentials provider for the demo) and see every conversion attributed to your account, with redownloadable `.tex` and `.pdf` artifacts.
+- **Batch ZIP Processing:** Upload a `.zip` of mixed PDF/LaTeX documents and the server fans them out through the pipeline in the background. Path-traversal, zip-bomb (≤20 files / ≤100 MB), and unsupported-extension guards are enforced server-side.
+- **Equation OCR Toggle:** Opt-in `pix2tex` (LaTeX-OCR) stage replaces embedded equation images with `$...$` LaTeX during the pipeline.
+- **Five Built-In Templates:** `report`, `ieee`, `resume`, `altacv`, and `moderncv` — pick the layout that fits the document.
+- **Multi-Format Export:** Export converted documents to **PDF, DOCX, HTML, Markdown, or EPUB** via Pandoc.
 - **Plugin Architecture:** Extensible pipeline system. Write a Python class and inject it into the processing stream without touching core code.
 - **LaTeX Input & Re-templating:** Upload `.tex` files to parse, re-structure, and apply new templates (e.g., convert a report to a modern CV).
 - **Standalone Compile API:** Direct `/api/v2/compile` endpoint to turn `.tex` files into PDFs via XeLaTeX.
-- **Multi-Format Export:** Export converted documents to DOCX, HTML, Markdown, or EPUB via Pandoc.
-- **Equation OCR Plugin:** Extract mathematical equations from images using the open-source `pix2tex` library via a drop-in Pipeline Stage.
-- **Five Built-In Templates:** `report`, `ieee`, `resume`, `altacv`, and `moderncv` — pick the layout that fits the document.
+- **Dual Interface:** Powerful CLI for automation + Intuitive Next.js Web UI for end-users.
 - **Hybrid Monorepo:** Python core engine + Next.js frontend, managed seamlessly together.
 - **One-Command Deploy:** Fully containerized with Docker Compose for zero-friction local deployment.
 
@@ -139,9 +143,12 @@ All endpoints live under the `/api/v2` prefix and are documented in OpenAPI at `
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/v2/convert` | Convert a document to LaTeX + final output. Accepts **PDF, `.tex`, `.latex`** input. `?output_format=pdf \| docx \| html \| md \| markdown \| epub` controls the returned file. |
+| `POST` | `/api/v2/convert` | Convert a document to LaTeX + final output. Accepts **PDF, `.tex`, `.latex`** input. `?output_format=pdf \| docx \| html \| md \| markdown \| epub` controls the returned file. Honours `x-user-id` header for job attribution. |
 | `POST` | `/api/v2/stream` | Real-time **SSE** streaming of the LaTeX generation (PDF output only). |
 | `POST` | `/api/v2/compile` | Standalone **`.tex` → `.pdf`** compilation via XeLaTeX — no AI step. |
+| `POST` | `/api/v2/batch` | Batch-convert a `.zip` archive of documents. Returns `202 Accepted` with a list of queued `job_id`s; processing happens in a FastAPI `BackgroundTask`. |
+| `GET`  | `/api/v2/jobs` | List recent conversion jobs. Optional `?user_id=…` filter scopes results to a single user. |
+| `GET`  | `/api/v2/jobs/{job_id}` | Single job detail, including download URLs when the artifact still exists on disk. |
 | `GET`  | `/api/v2/files/{job_id}/{filename}` | Download a previously-generated `.tex` or `.pdf` artifact. |
 | `GET`  | `/api/v2/formats` | List supported input formats. |
 | `POST` | `/api/v2/feedback` | Submit a 👍/👎 rating for a finished job. |
@@ -152,15 +159,23 @@ All endpoints live under the `/api/v2` prefix and are documented in OpenAPI at `
 
 ## 🗺️ Roadmap
 
+DocStream v2.0 is feature-complete! Future considerations may include:
+- [ ] Real token-level LLM streaming from providers
+- [ ] Collaborative real-time editing (like Google Docs)
+- [ ] Custom template upload UI
+
+### v2.0 — Shipped
+- [x] **Authentication & Job History:** NextAuth.js credentials login + SQLAlchemy-backed persistent job history scoped per user
+- [x] **Live LaTeX Editor:** Monaco editor with inline PDF preview and one-click recompile
+- [x] **Batch ZIP Processing:** `/api/v2/batch` with security guards (path traversal, zip-bomb) and FastAPI `BackgroundTasks`
+- [x] **Equation OCR Toggle:** `?enable_equation_ocr=true` on the convert/stream endpoints
+
 ### v1.1.0 — Shipped
 - [x] **LaTeX Input & Re-templating** — `.tex` / `.latex` parsing via the format router
 - [x] **Standalone Compile API** — `/api/v2/compile`
 - [x] **Multi-Format Export** — Pandoc-backed DOCX / HTML / MD / EPUB routing
 - [x] **Equation OCR Plugin** — pix2tex-backed `EquationOCRStage`
 - [x] **Resume / AltaCV / ModernCV templates** — unlocked end-to-end
-
-### v2.0 — Next Major
-- [ ] **Authentication & Job History:** Integrate NextAuth.js and SQLAlchemy to persist conversion history and allow users to redownload past jobs.
 
 ---
 
