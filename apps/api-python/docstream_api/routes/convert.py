@@ -44,6 +44,14 @@ async def convert_v2(
             "generated .tex source."
         ),
     ),
+    enable_equation_ocr: bool = Query(
+        default=False,
+        description=(
+            "Run pix2tex (LaTeX-OCR) on embedded equation images, replacing "
+            "them with `$...$` LaTeX. Adds significant latency on first run "
+            "(~200 MB model download)."
+        ),
+    ),
 ):
     """
     Convert an uploaded document to LaTeX and (optionally) re-export to
@@ -52,6 +60,10 @@ async def convert_v2(
     Supports: PDF, LaTeX/TeX (.tex, .latex)
     Templates: report, ieee, resume, altacv, moderncv
     Output formats: pdf, docx, html, md, markdown, epub
+
+    Set ``enable_equation_ocr=true`` to run pix2tex on embedded equation
+    images before template generation. Equations are replaced in-place
+    with ``$...$`` LaTeX for higher-quality output.
 
     On success returns the requested file as ``FileResponse``.
     On failure returns JSON describing the error.
@@ -136,6 +148,7 @@ async def convert_v2(
         job_id,
         output_dir,
         output_format=output_format,
+        enable_equation_ocr=enable_equation_ocr,
     )
 
     if not result["success"]:
@@ -218,6 +231,13 @@ async def stream_v2(
             "POST /api/v2/convert?output_format=... for non-PDF exports."
         ),
     ),
+    enable_equation_ocr: bool = Query(
+        default=False,
+        description=(
+            "Run pix2tex (LaTeX-OCR) on embedded equation images. Adds "
+            "significant latency on first run (~200 MB model download)."
+        ),
+    ),
 ):
     """
     Convert an uploaded document and stream the LaTeX output
@@ -288,7 +308,13 @@ async def stream_v2(
         )
 
     async def event_stream():
-        async for event in stream_document(file_path, template, job_id, output_dir):
+        async for event in stream_document(
+            file_path,
+            template,
+            job_id,
+            output_dir,
+            enable_equation_ocr=enable_equation_ocr,
+        ):
             payload = json.dumps(event)
             yield f"data: {payload}\n\n"
             if event.get("step") in ("done", "error"):

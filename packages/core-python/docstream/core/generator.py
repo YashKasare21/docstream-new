@@ -648,8 +648,10 @@ def _insert_figures(
         stem = img["filename"].rsplit(".", 1)[0]
         width = "0.9\\columnwidth" if template == "ieee" else "0.75\\linewidth"
         env = "figure*" if template == "ieee" and img["width"] > img["height"] else "figure"
+        # Use [htbp] (here, top, bottom, page) instead of [H] so LaTeX can
+        # distribute figures intelligently and avoid overfull pages.
         return (
-            f"\n\\begin{{{env}}}[H]\n"
+            f"\n\\begin{{{env}}}[htbp]\n"
             f"\\centering\n"
             f"\\includegraphics[width={width}]{{{stem}}}\n"
             f"\\caption*{{Figure {fig_num}}}\n"
@@ -677,6 +679,7 @@ def _insert_figures(
 
     if not mentions:
         logger.info("No figure mentions found — inserting figures section before bibliography")
+
         figures_section = "\n\\clearpage\n" + "".join(make_figure(img, i) for i, img in enumerate(images, 1))
         return body + figures_section + tail
 
@@ -696,7 +699,11 @@ def _insert_figures(
 
     # Remaining figures (no mention) go into body, before tail
     remaining = "".join(make_figure(images[i - 1], i) for i in range(1, len(images) + 1) if i not in inserted)
-    return result + remaining + tail
+    # Inject a \FloatBarrier right before the bibliography / end of document
+    # so all floats are flushed before references, preventing figures from
+    # drifting past the bibliography.
+    float_barrier = "\\FloatBarrier\n"
+    return result + remaining + float_barrier + tail
 
 
 def _merge_all_parts(part1: str, continuation_parts: list[str]) -> str:

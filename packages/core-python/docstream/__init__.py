@@ -72,6 +72,7 @@ def convert(
     template: str = "report",
     output_dir: str | Path = "./docstream_output",
     ai_provider=None,
+    enable_equation_ocr: bool = False,
 ) -> ConversionResult:
     """
     Convert a PDF to LaTeX and PDF.
@@ -79,20 +80,26 @@ def convert(
     This is the main entry point for Docstream.
 
     Pipeline:
-    1. Extract structured text from PDF using PyMuPDF
-    2. AI fills LaTeX template skeleton with content
-    3. XeLaTeX compiles LaTeX to PDF
+    1. (Optional) Run pix2tex equation OCR on embedded equation images
+    2. Extract structured text from PDF using PyMuPDF
+    3. AI fills LaTeX template skeleton with content
+    4. XeLaTeX compiles LaTeX to PDF
 
     Internally this creates a :class:`Pipeline` with a single
-    :class:`LatexExtractionStage` and runs it synchronously.
-    You can also construct custom pipelines with additional stages
-    (see ``docstream.plugins``).
+    :class:`LatexExtractionStage` (plus an optional
+    :class:`EquationOCRStage` when ``enable_equation_ocr`` is True) and
+    runs it synchronously. You can also construct custom pipelines with
+    additional stages (see ``docstream.plugins``).
 
     Args:
         pdf_path: Path to the input PDF file
         template: 'report' | 'ieee' | 'resume' | 'altacv' | 'moderncv' (default: 'report')
         output_dir: Directory for output files
         ai_provider: Optional custom AI provider chain
+        enable_equation_ocr: When True, prepend :class:`EquationOCRStage`
+            to the pipeline. Equation images are replaced with
+            ``$...$`` LaTeX. Adds significant latency on first run
+            (~200 MB pix2tex model download).
 
     Returns:
         ConversionResult with tex_path and pdf_path on success
@@ -104,8 +111,14 @@ def convert(
             print(f"PDF: {result.pdf_path}")
     """
     from docstream.pipeline import LatexExtractionStage, Pipeline
+    from docstream.plugins import EquationOCRStage
 
-    pipeline = Pipeline([LatexExtractionStage()])
+    stages = []
+    if enable_equation_ocr:
+        stages.append(EquationOCRStage())
+    stages.append(LatexExtractionStage())
+
+    pipeline = Pipeline(stages)
     data = pipeline.run({
         "file_path": str(pdf_path),
         "template": template,
@@ -135,6 +148,7 @@ async def stream_convert(
     template: str = "report",
     output_dir: str | Path = "./docstream_output",
     ai_provider=None,
+    enable_equation_ocr: bool = False,
 ):
     """
     Convert a PDF to LaTeX and yield the result chunk by chunk.
@@ -150,6 +164,10 @@ async def stream_convert(
 
     The final yield includes ``tex_url``, ``pdf_url``, and
     ``processing_time`` alongside ``step="done"``.
+
+    When ``enable_equation_ocr`` is True, an :class:`EquationOCRStage`
+    is prepended to the pipeline so equation images are converted to
+    LaTeX before template generation.
     """
     import asyncio
 
@@ -167,6 +185,7 @@ async def stream_convert(
             template=template,
             output_dir=output_dir,
             ai_provider=ai_provider,
+            enable_equation_ocr=enable_equation_ocr,
         ),
     )
 

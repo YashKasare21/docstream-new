@@ -109,6 +109,7 @@ async def convert_document(
     job_id: str,
     output_dir: Path,
     output_format: str = "pdf",
+    enable_equation_ocr: bool = False,
 ) -> dict:
     """
     Convert a document using docstream v2 pipeline.
@@ -119,12 +120,17 @@ async def convert_document(
     When ``output_format`` is not ``"pdf"``, the generated ``.tex`` is
     post-processed through Pandoc to produce the requested format. The
     returned ``output_path`` points to the file the route should serve.
+
+    When ``enable_equation_ocr`` is True, an :class:`EquationOCRStage`
+    is prepended to the pipeline so equation images are replaced with
+    ``$...$`` LaTeX before template generation.
     """
     import docstream
 
     logger.info(
         f"[{job_id}] Starting conversion: file={file_path.name} "
-        f"template={template} output_format={output_format}"
+        f"template={template} output_format={output_format} "
+        f"equation_ocr={enable_equation_ocr}"
     )
 
     try:
@@ -135,6 +141,7 @@ async def convert_document(
                 str(file_path),
                 template=template,
                 output_dir=str(output_dir),
+                enable_equation_ocr=enable_equation_ocr,
             ),
         )
 
@@ -197,6 +204,7 @@ async def stream_document(
     template: str,
     job_id: str,
     output_dir: Path,
+    enable_equation_ocr: bool = False,
 ):
     """
     Convert a document and stream the result chunk-by-chunk via SSE.
@@ -204,19 +212,27 @@ async def stream_document(
     Wraps ``docstream.stream_convert``, mapping output paths to
     download URLs so the frontend can link to the generated files.
 
+    When ``enable_equation_ocr`` is True, an :class:`EquationOCRStage`
+    is prepended to the pipeline so equation images are converted to
+    LaTeX before template generation.
+
     Yields JSON-serialisable dicts with ``chunk``, ``progress``, and
     ``step`` keys suitable for ``data: {...}\n\n`` SSE framing.
     """
 
     import docstream
 
-    logger.info(f"[{job_id}] Starting streaming conversion: file={file_path.name} template={template}")
+    logger.info(
+        f"[{job_id}] Starting streaming conversion: file={file_path.name} "
+        f"template={template} equation_ocr={enable_equation_ocr}"
+    )
 
     try:
         async for event in docstream.stream_convert(
             str(file_path),
             template=template,
             output_dir=str(output_dir),
+            enable_equation_ocr=enable_equation_ocr,
         ):
             if event.get("step") == "done":
                 tex_url = f"/api/v2/files/{job_id}/{Path(event['tex_url']).name}" if event.get("tex_url") else None
