@@ -1,8 +1,28 @@
-"""SQLite database helpers for the feedback system."""
+"""Database helpers for the DocStream API.
+
+Two co-existing storage layers live here:
+
+* ``feedback_*`` — legacy ``sqlite3`` connection for the feedback widget.
+  Left untouched so the public surface (``insert_feedback``,
+  ``get_stats``) keeps its existing behaviour.
+* **SQLAlchemy ORM** (``engine``, ``SessionLocal``, ``get_db``,
+  ``init_jobs_db``) — persistent job history. Tables are created
+  automatically via ``Base.metadata.create_all`` on startup; no
+  Alembic migration is configured.
+"""
+
+from __future__ import annotations
 
 import os
 import sqlite3
 from pathlib import Path
+from typing import Generator
+
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
+
+# ── Legacy feedback connection (sqlite3) ─────────────────────────────────────
 
 DB_PATH = os.getenv("DB_PATH", "/tmp/docstream/feedback.db")
 
@@ -18,7 +38,7 @@ def get_connection() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """Create tables and indexes if they don't exist."""
+    """Create feedback tables and indexes if they don't exist."""
     conn = get_connection()
     try:
         conn.execute("""
@@ -119,3 +139,66 @@ def get_stats() -> dict:
         }
     finally:
         conn.close()
+
+
+# ── SQLAlchemy ORM (job history) ─────────────────────────────────────────────
+
+# Default to a project-relative file so jobs survive container restarts
+# and the `feedback.db` in /tmp isn't accidentally coupled to the new
+# jobs table. Override via the ``DOCSTREAM_DB_PATH`` env var.
+_DEFAULT_JOBS_DB = Path(__file__).resolve().parent.parent / "docstream.db"
+JOBS_DB_PATH = Path(os.getenv("DOCSTREAM_DB_PATH", str(_DEFAULT_JOBS_DB)))
+JOBS_DB_URL = f"sqlite:///{JOBS_DB_PATH.as_posix()}"
+
+# ``check_same_thread=False`` lets FastAPI dependency-injected sessions
+# work across worker threads. SQLite serialises writes internally, so
+# this is safe for our low-throughput workload.
+engine: Engine = create_engine(
+    JOBS_DB_URL,
+    connect_args={"check_same_thread": False},
+    future=True,
+)
+
+SessionLocal: sessionmaker[Session] = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+    expire_on_commit=False,
+    future=True,
+)
+
+
+def get_db() -> Generator[Session, None, None]:
+    """FastAPI dependency that yields a request-scoped ``Session``."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def init_jobs_db() -> None:
+    """Create ORM tables (idempotent)."""
+    # Import here to avoid a circular import: ``db_models`` imports from
+    # ``sqlalchemy.orm``, and at import time the Base is registered.
+    from docstream_api.db_models import Base  # noqa: WPS433 — intentional local import
+
+    JOBS_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    Base.metadata.create_all(bind=engine)
+
+
+__all__ = [
+    # legacy feedback (sqlite3)
+    "DB_PATH",
+    "get_connection",
+    "init_db",
+    "insert_feedback",
+    "get_stats",
+    # SQLAlchemy ORM
+    "engine",
+    "SessionLocal",
+    "get_db",
+    "init_jobs_db",
+    "JOBS_DB_PATH",
+    "JOBS_DB_URL",
+]

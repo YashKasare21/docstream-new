@@ -1,5 +1,13 @@
 """
 Conversion endpoints — PDF to LaTeX via docstream v2.
+
+Job persistence
+---------------
+Every accepted conversion request is recorded in the ``jobs`` table
+(``Job`` model in ``docstream_api.models``). The row is created in
+``processing`` state, then updated to ``completed`` or ``failed`` once
+the core engine returns. ``stream_v2`` performs the same bookkeeping
+inside its async generator, capturing the final SSE event.
 """
 
 import json
@@ -10,6 +18,8 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
+from docstream_api import database as database_module
+from docstream_api.db_models import Job
 from docstream_api.services.converter import (
     MAX_FILE_SIZE_MB,
     OUTPUT_FORMAT_MAP,
@@ -19,11 +29,83 @@ from docstream_api.services.converter import (
 )
 from docstream_api.utils.rate_limit import limiter
 
+
+def _session() -> "database_module.SessionLocal":  # type: ignore[name-defined]
+    """Return a fresh ``SessionLocal`` instance.
+
+    Resolved through the module (rather than captured at import time)
+    so test fixtures that reload ``docstream_api.database`` after
+    pointing ``DOCSTREAM_DB_PATH`` at a fresh file see the new
+    engine.
+    """
+    return database_module.SessionLocal()
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 SUPPORTED_EXTENSIONS = {".pdf", ".tex", ".latex"}
+
+
+# ── Job-persistence helpers ───────────────────────────────────────────────────
+
+
+def _create_job(job_id: str, input_filename: str, template: str, output_format: str) -> None:
+    """Insert a new ``Job`` row in ``processing`` state.
+
+    Failures are logged but never bubble up — a missing DB row should
+    not block the user-facing conversion flow.
+    """
+    try:
+        with _session() as db:
+            db.add(
+                Job(
+                    id=job_id,
+                    input_filename=input_filename,
+                    template=template,
+                    output_format=output_format,
+                    status="processing",
+                )
+            )
+            db.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[%s] Failed to insert Job row: %s", job_id, exc)
+
+
+def _finalise_job(
+    job_id: str,
+    *,
+    status: str,
+    output_path: Path | None = None,
+    error_message: str | None = None,
+) -> None:
+    """Update a ``Job`` row once conversion finishes.
+
+    ``output_path`` is the file served to the user (PDF or Pandoc
+    export). The .tex source path is always ``<stem>.tex`` next to it
+    when the conversion succeeded, so we derive it from the filename.
+    """
+    try:
+        with _session() as db:
+            row = db.get(Job, job_id)
+            if row is None:
+                return
+            row.status = status
+            if error_message is not None:
+                row.error_message = error_message[:2048]
+            if output_path is not None and status == "completed":
+                output_path = Path(output_path)
+                # The .tex source lives next to the produced output.
+                tex_candidate = output_path.with_suffix(".tex")
+                if tex_candidate.exists():
+                    row.output_tex_path = str(tex_candidate)
+                # For non-PDF outputs the ``pdf_path`` column is left
+                # null — the user downloaded a .docx/.html/etc. instead.
+                if output_path.suffix.lower() == ".pdf":
+                    row.output_pdf_path = str(output_path)
+            db.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[%s] Failed to update Job row: %s", job_id, exc)
 
 
 @router.post(
@@ -114,6 +196,10 @@ async def convert_v2(
             },
         )
 
+    # Record the job in the DB before doing any work so it always
+    # appears in history (even if the upload is interrupted).
+    _create_job(job_id, filename, template, output_format)
+
     # Set up job directories
     job_dir = Path(f"/tmp/docstream/{job_id}")
     input_dir = job_dir / "input"
@@ -132,6 +218,11 @@ async def convert_v2(
     size_mb = size_bytes / (1024 * 1024)
     if size_mb > MAX_FILE_SIZE_MB:
         file_path.unlink(missing_ok=True)
+        _finalise_job(
+            job_id,
+            status="failed",
+            error_message=f"File too large: {size_mb:.1f} MB (max {MAX_FILE_SIZE_MB} MB).",
+        )
         return JSONResponse(
             status_code=400,
             content={
@@ -153,6 +244,7 @@ async def convert_v2(
 
     if not result["success"]:
         error_msg = result.get("error", "Conversion failed.")
+        _finalise_job(job_id, status="failed", error_message=error_msg)
 
         # Pandoc missing -> 501 Not Implemented
         if "Pandoc is not installed" in error_msg:
@@ -192,6 +284,11 @@ async def convert_v2(
     output_path = Path(result["output_path"])
     if not output_path.exists():
         logger.error("[%s] Result claims success but file missing: %s", job_id, output_path)
+        _finalise_job(
+            job_id,
+            status="failed",
+            error_message="Conversion succeeded but output file was not produced.",
+        )
         return JSONResponse(
             status_code=500,
             content={
@@ -200,6 +297,10 @@ async def convert_v2(
                 "error": "Conversion succeeded but output file was not produced.",
             },
         )
+
+    # Stamp the Job row with the output paths so the history endpoint
+    # can build download URLs.
+    _finalise_job(job_id, status="completed", output_path=output_path)
 
     _, _, media_type = OUTPUT_FORMAT_MAP[output_format]
     return FileResponse(
@@ -280,6 +381,10 @@ async def stream_v2(
             media_type="text/event-stream",
         )
 
+    # Record the job up-front so it shows up in /api/v2/jobs even if
+    # the client disconnects mid-stream.
+    _create_job(job_id, filename, template, output_format)
+
     job_dir = Path(f"/tmp/docstream/{job_id}")
     input_dir = job_dir / "input"
     output_dir = job_dir / "output"
@@ -297,6 +402,11 @@ async def stream_v2(
     size_mb = size_bytes / (1024 * 1024)
     if size_mb > MAX_FILE_SIZE_MB:
         file_path.unlink(missing_ok=True)
+        _finalise_job(
+            job_id,
+            status="failed",
+            error_message=f"File too large: {size_mb:.1f} MB (max {MAX_FILE_SIZE_MB} MB).",
+        )
         error = json.dumps({
             "chunk": f"File too large: {size_mb:.1f} MB. Maximum is {MAX_FILE_SIZE_MB} MB.",
             "progress": 1.0,
@@ -308,18 +418,43 @@ async def stream_v2(
         )
 
     async def event_stream():
-        async for event in stream_document(
-            file_path,
-            template,
-            job_id,
-            output_dir,
-            enable_equation_ocr=enable_equation_ocr,
-        ):
-            payload = json.dumps(event)
-            yield f"data: {payload}\n\n"
-            if event.get("step") in ("done", "error"):
-                yield "data: [DONE]\n\n"
-                return
+        try:
+            async for event in stream_document(
+                file_path,
+                template,
+                job_id,
+                output_dir,
+                enable_equation_ocr=enable_equation_ocr,
+            ):
+                payload = json.dumps(event)
+                yield f"data: {payload}\n\n"
+                step = event.get("step")
+                if step == "done":
+                    # The docstream pipeline produced both .tex and .pdf.
+                    _finalise_job(
+                        job_id,
+                        status="completed",
+                        output_path=Path(event["pdf_url"]) if event.get("pdf_url") else None,
+                    )
+                    yield "data: [DONE]\n\n"
+                    return
+                if step == "error":
+                    _finalise_job(
+                        job_id,
+                        status="failed",
+                        error_message=event.get("chunk"),
+                    )
+                    yield "data: [DONE]\n\n"
+                    return
+        except Exception as exc:  # noqa: BLE001
+            _finalise_job(job_id, status="failed", error_message=str(exc))
+            error = json.dumps({
+                "chunk": f"Streaming error: {exc}",
+                "progress": 1.0,
+                "step": "error",
+            })
+            yield f"data: {error}\n\n"
+            yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 

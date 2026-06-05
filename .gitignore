@@ -38,6 +38,11 @@ ENV/
 
 # Test / coverage
 .pytest_cache/
+
+# Runtime SQLite databases (job history + feedback)
+*.db
+apps/api-python/docstream.db
+apps/api-python/feedback.db
 .coverage
 .coverage.*
 htmlcov/

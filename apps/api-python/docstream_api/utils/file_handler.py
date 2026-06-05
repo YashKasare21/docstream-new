@@ -71,16 +71,53 @@ def get_output_dir(job_id: str) -> Path:
 
 
 def cleanup_old_jobs(max_age_seconds: int = 3600) -> None:
-    """Delete job directories older than max_age_seconds."""
+    """Delete job directories older than max_age_seconds.
+
+    Also deletes the corresponding ``Job`` row from the SQLAlchemy
+    database so the job-history view never references files that no
+    longer exist on disk. DB failures are logged but never raised —
+    the filesystem cleanup should proceed even if the DB is missing.
+    """
     if not TEMP_BASE.exists():
         return
 
+    # Imported lazily so file_handler has no hard import dependency on
+    # the SQLAlchemy layer (keeps it usable from scripts that only
+    # touch the filesystem).
+    try:
+        from docstream_api import database as database_module
+        from docstream_api.db_models import Job
+    except Exception:  # noqa: BLE001
+        database_module = None
+        Job = None  # type: ignore[assignment]
+
+    def _open_session():
+        assert database_module is not None
+        return database_module.SessionLocal()
+
     now = time.time()
     for job_dir in TEMP_BASE.iterdir():
-        if job_dir.is_dir():
-            age = now - job_dir.stat().st_mtime
-            if age > max_age_seconds:
-                shutil.rmtree(job_dir, ignore_errors=True)
+        if not job_dir.is_dir():
+            continue
+        age = now - job_dir.stat().st_mtime
+        if age <= max_age_seconds:
+            continue
+        job_id = job_dir.name
+        shutil.rmtree(job_dir, ignore_errors=True)
+        if database_module is None or Job is None:
+            continue
+        try:
+            with _open_session() as db:
+                row = db.get(Job, job_id)
+                if row is not None:
+                    db.delete(row)
+                    db.commit()
+        except Exception as exc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "Failed to delete Job row for %s: %s", job_id, exc
+            )
 
 
 def read_file_as_response(path: Path) -> bytes:

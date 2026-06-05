@@ -15,11 +15,12 @@ from slowapi.errors import RateLimitExceeded
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")  # noqa: E402
 
-from docstream_api.database import init_db  # noqa: E402
+from docstream_api.database import init_db, init_jobs_db  # noqa: E402
 from docstream_api.routes.compile import router as compile_router  # noqa: E402
 from docstream_api.routes.convert import router as convert_router  # noqa: E402
 from docstream_api.routes.feedback import router as feedback_router  # noqa: E402
 from docstream_api.routes.health import router as health_router  # noqa: E402
+from docstream_api.routes.jobs import router as jobs_router  # noqa: E402
 from docstream_api.utils.file_handler import cleanup_old_jobs  # noqa: E402
 from docstream_api.utils.rate_limit import limiter  # noqa: E402
 
@@ -28,25 +29,56 @@ logger = logging.getLogger(__name__)
 TEMP_BASE = Path("/tmp/docstream")
 
 
-async def _cleanup_loop():
-    """Background task: delete /tmp/docstream jobs older than 1 hour."""
+async def _cleanup_loop() -> None:
+    """Background task: delete /tmp/docstream jobs older than 1 hour.
+
+    Removes the corresponding ``Job`` record from the SQLAlchemy DB so
+    the filesystem and the job-history view stay in sync.
+    """
+    from docstream_api import database as database_module
+    from docstream_api.db_models import Job
+
+    def _open_session():
+        """Resolve SessionLocal through the module so test reloads stick."""
+        return database_module.SessionLocal()
+
     while True:
         await asyncio.sleep(3600)
         if not TEMP_BASE.exists():
             continue
         now = time.time()
         for job_dir in TEMP_BASE.iterdir():
-            if job_dir.is_dir():
-                age = now - job_dir.stat().st_mtime
-                if age > 3600:
-                    shutil.rmtree(job_dir, ignore_errors=True)
-                    logger.info("Cleaned up expired job: %s", job_dir.name)
+            if not job_dir.is_dir():
+                continue
+            age = now - job_dir.stat().st_mtime
+            if age <= 3600:
+                continue
+            job_id = job_dir.name
+            shutil.rmtree(job_dir, ignore_errors=True)
+            # Also drop the DB row so the history endpoint never returns
+            # a path that no longer exists on disk.
+            try:
+                with _open_session() as db:
+                    row = db.get(Job, job_id)
+                    if row is not None:
+                        db.delete(row)
+                        db.commit()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "Failed to delete Job row for expired job %s: %s",
+                    job_id,
+                    exc,
+                )
+            logger.info("Cleaned up expired job: %s", job_id)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
+    # Legacy feedback tables (sqlite3, raw SQL).
     init_db()
+    # SQLAlchemy ORM tables for job history.
+    init_jobs_db()
     cleanup_old_jobs()
     result = subprocess.run(["which", "xelatex"], capture_output=True, text=True)
     logger.info(f"xelatex location: {result.stdout.strip()}")
@@ -92,6 +124,7 @@ app.include_router(compile_router)
 app.include_router(convert_router)
 app.include_router(feedback_router)
 app.include_router(health_router)
+app.include_router(jobs_router)
 
 
 @app.get("/")
