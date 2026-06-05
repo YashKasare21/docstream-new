@@ -1,7 +1,7 @@
 "use client";
 
 import { useReducer, useState, useCallback, useEffect } from "react";
-import { ArrowLeft, ArrowRight, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ArrowRight, AlertTriangle, Info } from "lucide-react";
 import Link from "next/link";
 import DropZone from "@/components/convert/DropZone";
 import TemplateSelector from "@/components/convert/TemplateSelector";
@@ -9,21 +9,38 @@ import ProgressTracker from "@/components/convert/ProgressTracker";
 import ErrorCard from "@/components/convert/ErrorCard";
 import ResultCard from "@/components/convert/ResultCard";
 import FormatSelector, { FORMAT_OPTIONS } from "@/components/convert/FormatSelector";
-import { checkHealth, streamDocument, type ConvertResult, type StreamEvent } from "@/lib/api";
+import OutputFormatSelector, {
+  OUTPUT_FORMAT_OPTIONS,
+  type OutputFormat,
+} from "@/components/convert/OutputFormatSelector";
+import {
+  checkHealth,
+  convertDocument,
+  streamDocument,
+  type ConvertResult,
+  type StreamEvent,
+} from "@/lib/api";
 
 // ── State machine ──────────────────────────────────────────────────────────────
 type State =
   | { status: "idle" }
   | { status: "file_selected"; file: File }
-  | { status: "processing"; file: File; template: string }
-  | { status: "streaming"; file: File; template: string; accumulated: string; progress: number }
+  | { status: "processing"; file: File; template: string; outputFormat: OutputFormat }
+  | {
+      status: "streaming";
+      file: File;
+      template: string;
+      outputFormat: OutputFormat;
+      accumulated: string;
+      progress: number;
+    }
   | { status: "complete"; result: ConvertResult }
   | { status: "error"; message: string };
 
 type Action =
   | { type: "SELECT_FILE"; file: File }
   | { type: "REMOVE_FILE" }
-  | { type: "START_PROCESSING"; template: string }
+  | { type: "START_PROCESSING"; template: string; outputFormat: OutputFormat }
   | { type: "STREAM_CHUNK"; chunk: string; progress: number }
   | { type: "COMPLETE"; result: ConvertResult }
   | { type: "FAIL"; message: string }
@@ -37,7 +54,12 @@ function reducer(state: State, action: Action): State {
       return { status: "idle" };
     case "START_PROCESSING":
       if (state.status !== "file_selected") return state;
-      return { status: "processing", file: state.file, template: action.template };
+      return {
+        status: "processing",
+        file: state.file,
+        template: action.template,
+        outputFormat: action.outputFormat,
+      };
     case "STREAM_CHUNK": {
       if (state.status !== "processing" && state.status !== "streaming") return state;
       const prevAccumulated = state.status === "streaming" ? state.accumulated : "";
@@ -45,6 +67,7 @@ function reducer(state: State, action: Action): State {
         status: "streaming",
         file: state.file,
         template: state.template,
+        outputFormat: state.outputFormat,
         accumulated: prevAccumulated + action.chunk,
         progress: action.progress,
       };
@@ -64,6 +87,7 @@ export default function ConvertPage() {
   const [state, dispatch] = useReducer(reducer, { status: "idle" });
   const [template, setTemplate] = useState("report");
   const [selectedFormat, setSelectedFormat] = useState(".pdf");
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>("pdf");
   const [backendUp, setBackendUp] = useState<boolean | null>(null);
 
   // Check backend availability once on mount
@@ -73,19 +97,33 @@ export default function ConvertPage() {
 
   const formatOpt = FORMAT_OPTIONS.find((f) => f.ext === selectedFormat) ?? FORMAT_OPTIONS[0];
 
+  // The SSE streaming endpoint is PDF-only — non-PDF outputs must use the
+  // standard POST /api/v2/convert endpoint.
+  const canStream = outputFormat === "pdf";
+  const outputFormatMeta = OUTPUT_FORMAT_OPTIONS.find((o) => o.id === outputFormat);
+
   const handleConvert = useCallback(async () => {
     if (state.status !== "file_selected") return;
 
-    dispatch({ type: "START_PROCESSING", template });
+    dispatch({ type: "START_PROCESSING", template, outputFormat });
 
     try {
-      const result = await streamDocument(
-        state.file,
-        template,
-        (event: StreamEvent) => {
-          dispatch({ type: "STREAM_CHUNK", chunk: event.chunk, progress: event.progress });
-        },
-      );
+      const result = canStream
+        ? await streamDocument(state.file, template, (event: StreamEvent) => {
+            dispatch({ type: "STREAM_CHUNK", chunk: event.chunk, progress: event.progress });
+          })
+        : await convertDocument(
+            state.file,
+            template,
+            (stage) => {
+              if (stage === 1) {
+                dispatch({ type: "STREAM_CHUNK", chunk: "", progress: 0.2 });
+              } else if (stage === 3) {
+                dispatch({ type: "STREAM_CHUNK", chunk: "", progress: 1 });
+              }
+            },
+            outputFormat,
+          );
       dispatch({ type: "COMPLETE", result });
     } catch (err) {
       dispatch({
@@ -93,7 +131,7 @@ export default function ConvertPage() {
         message: err instanceof Error ? err.message : "An unexpected error occurred.",
       });
     }
-  }, [state, template]);
+  }, [state, template, outputFormat, canStream]);
 
   const isInputVisible = state.status === "idle" || state.status === "file_selected";
 
@@ -150,6 +188,26 @@ export default function ConvertPage() {
                 }}
               />
 
+              <OutputFormatSelector
+                selected={outputFormat}
+                onChange={(fmt) => {
+                  setOutputFormat(fmt);
+                  if (state.status === "file_selected") {
+                    dispatch({ type: "REMOVE_FILE" });
+                  }
+                }}
+              />
+
+              {!canStream && outputFormatMeta && (
+                <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs">
+                  <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                  <span>
+                    {outputFormatMeta.label} export uses Pandoc and is processed via a single
+                    request (streaming is only available for PDF).
+                  </span>
+                </div>
+              )}
+
               <DropZone
                 file={state.status === "file_selected" ? state.file : null}
                 onFileSelect={(file) => dispatch({ type: "SELECT_FILE", file })}
@@ -165,7 +223,7 @@ export default function ConvertPage() {
                   onClick={handleConvert}
                   className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-base transition-all duration-200 shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40"
                 >
-                  Convert to LaTeX
+                  {outputFormat === "pdf" ? "Convert to LaTeX" : `Convert to ${outputFormatMeta?.label ?? outputFormat}`}
                   <ArrowRight className="w-4 h-4" />
                 </button>
               )}

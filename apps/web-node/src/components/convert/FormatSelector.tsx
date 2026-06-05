@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, File, Monitor, ImageIcon, Code, AlignLeft } from "lucide-react";
+import { FileText, File, Monitor, ImageIcon, Code, AlignLeft, FileCode2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 interface FormatOption {
@@ -46,6 +46,18 @@ export const FORMAT_OPTIONS: FormatOption[] = [
     mime: "text/plain",
     icon: <AlignLeft className="w-4 h-4" />,
     label: "Text",
+  },
+  {
+    ext: ".tex",
+    mime: "application/x-tex",
+    icon: <FileCode2 className="w-4 h-4" />,
+    label: "LaTeX",
+  },
+  {
+    ext: ".latex",
+    mime: "application/x-latex",
+    icon: <FileCode2 className="w-4 h-4" />,
+    label: "LaTeX",
   },
 ];
 

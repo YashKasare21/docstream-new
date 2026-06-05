@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, BookOpen, User, Check } from "lucide-react";
+import { FileText, BookOpen, User, Check, Briefcase, IdCard } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface TemplateSelectorProps {
@@ -33,13 +33,29 @@ const templates = [
     tag: "Compact",
     popular: false,
   },
+  {
+    id: "altacv",
+    icon: IdCard,
+    title: "AltaCV (CV)",
+    description: "Modern, visually rich CV with sidebar layout",
+    tag: "CV",
+    popular: false,
+  },
+  {
+    id: "moderncv",
+    icon: Briefcase,
+    title: "ModernCV (CV)",
+    description: "Classic Europass-style CV with classic themes",
+    tag: "CV",
+    popular: false,
+  },
 ];
 
 export default function TemplateSelector({ selected, onSelect }: TemplateSelectorProps) {
   return (
     <div>
       <h3 className="text-lg font-semibold text-white mb-4">Choose a template</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {templates.map((tmpl) => {
           const Icon = tmpl.icon;
           const isSelected = selected === tmpl.id;

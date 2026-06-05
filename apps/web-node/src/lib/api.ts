@@ -16,6 +16,7 @@ export async function convertDocument(
   file: File,
   template: string,
   onProgress?: (stage: number) => void,
+  output_format?: string,
 ): Promise<ConvertResult> {
   const formData = new FormData();
   formData.append("file", file);
@@ -23,7 +24,8 @@ export async function convertDocument(
 
   onProgress?.(1);
 
-  const response = await fetch(`${API_BASE_URL}/api/v2/convert`, {
+  const query = output_format ? `?output_format=${encodeURIComponent(output_format)}` : "";
+  const response = await fetch(`${API_BASE_URL}/api/v2/convert${query}`, {
     method: "POST",
     body: formData,
     // No Content-Type header — browser sets it with multipart boundary
@@ -167,4 +169,42 @@ export async function getFormats(): Promise<string[]> {
   } catch {
     return [".pdf"];
   }
+}
+
+/**
+ * Direct LaTeX compilation — uploads a `.tex` file to the standalone
+ * `/api/v2/compile` endpoint and returns a blob URL the browser can
+ * download. The server runs XeLaTeX without any AI generation step, so
+ * this is the path for iteratively recompiling hand-authored sources.
+ */
+export async function compileLatex(file: File): Promise<{ blob: Blob; url: string; filename: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE_URL}/api/v2/compile`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let detail = `Server error: ${response.status} ${response.statusText}`;
+    try {
+      const errBody = await response.json();
+      if (errBody?.detail) {
+        detail = typeof errBody.detail === "string" ? errBody.detail : JSON.stringify(errBody.detail);
+      }
+    } catch {
+      // body wasn't JSON; keep the generic message
+    }
+    throw new Error(detail);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const match = disposition.match(/filename="?([^";]+)"?/i);
+  const filename = match?.[1] ?? `${file.name.replace(/\.(tex|latex)$/i, "")}.pdf`;
+
+  return { blob, url, filename };
 }
