@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -46,6 +46,8 @@ class Job(Base):
     output_pdf_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     output_tex_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     error_message: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    page_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    token_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
         return (
@@ -70,6 +72,8 @@ class Job(Base):
             "output_pdf_path": self.output_pdf_path,
             "output_tex_path": self.output_tex_path,
             "error_message": self.error_message,
+            "page_count": self.page_count,
+            "token_count": self.token_count,
         }
 
 

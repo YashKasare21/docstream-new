@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import UploadFile
 
-TEMP_BASE = Path("/tmp/docstream")
+TEMP_BASE = Path("./storage/jobs")
 
 # PDF magic bytes: %PDF
 PDF_MAGIC = b"%PDF"
@@ -80,7 +80,6 @@ def cleanup_old_jobs(max_age_seconds: int = 3600) -> None:
     """
     if not TEMP_BASE.exists():
         return
-
     # Imported lazily so file_handler has no hard import dependency on
     # the SQLAlchemy layer (keeps it usable from scripts that only
     # touch the filesystem).
@@ -96,6 +95,8 @@ def cleanup_old_jobs(max_age_seconds: int = 3600) -> None:
         return database_module.SessionLocal()
 
     now = time.time()
+    if not TEMP_BASE.exists():
+        return
     for job_dir in TEMP_BASE.iterdir():
         if not job_dir.is_dir():
             continue

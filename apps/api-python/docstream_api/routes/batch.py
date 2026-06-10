@@ -31,6 +31,7 @@ from docstream_api import database as database_module
 from docstream_api.db_models import Job
 from docstream_api.routes.convert import SUPPORTED_EXTENSIONS, _finalise_job
 from docstream_api.services.converter import convert_document
+from docstream_api.utils.file_handler import TEMP_BASE
 from docstream_api.utils.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ router = APIRouter()
 # applied to the whole archive.
 MAX_FILES_PER_BATCH = 20
 MAX_BATCH_BYTES = 100 * 1024 * 1024  # 100 MB uncompressed
-TEMP_BATCH_ROOT = Path("/tmp/docstream/batch")
+TEMP_BATCH_ROOT = TEMP_BASE / "batch"
 
 
 def _is_safe_member(name: str) -> bool:

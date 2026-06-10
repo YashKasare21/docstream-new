@@ -27,6 +27,7 @@ from docstream_api.services.converter import (
     convert_document,
     stream_document,
 )
+from docstream_api.utils.file_handler import TEMP_BASE
 from docstream_api.utils.rate_limit import limiter
 
 
@@ -90,12 +91,17 @@ def _finalise_job(
     status: str,
     output_path: Path | None = None,
     error_message: str | None = None,
+    page_count: int = 0,
+    token_count: int = 0,
 ) -> None:
     """Update a ``Job`` row once conversion finishes.
 
     ``output_path`` is the file served to the user (PDF or Pandoc
     export). The .tex source path is always ``<stem>.tex`` next to it
     when the conversion succeeded, so we derive it from the filename.
+
+    ``page_count`` and ``token_count`` are usage metering fields
+    used for future billing.
     """
     try:
         with _session() as db:
@@ -115,6 +121,8 @@ def _finalise_job(
                 # null — the user downloaded a .docx/.html/etc. instead.
                 if output_path.suffix.lower() == ".pdf":
                     row.output_pdf_path = str(output_path)
+            row.page_count = page_count
+            row.token_count = token_count
             db.commit()
     except Exception as exc:  # noqa: BLE001
         logger.warning("[%s] Failed to update Job row: %s", job_id, exc)
@@ -214,7 +222,7 @@ async def convert_v2(
     _create_job(job_id, filename, template, output_format, user_id=user_id)
 
     # Set up job directories
-    job_dir = Path(f"/tmp/docstream/{job_id}")
+    job_dir = TEMP_BASE / job_id
     input_dir = job_dir / "input"
     output_dir = job_dir / "output"
     input_dir.mkdir(parents=True, exist_ok=True)
@@ -311,9 +319,23 @@ async def convert_v2(
             },
         )
 
+    # Calculate page count from the produced PDF for usage metering.
+    page_count = 0
+    if output_path.suffix.lower() == ".pdf":
+        try:
+            import fitz  # PyMuPDF — already a dependency of docstream-core
+
+            doc = fitz.open(str(output_path))
+            page_count = doc.page_count
+            doc.close()
+        except Exception:  # noqa: BLE001
+            logger.warning("[%s] Failed to read page count from %s", job_id, output_path)
+
+    token_count = 0  # Will be populated from AI provider response in future
+
     # Stamp the Job row with the output paths so the history endpoint
     # can build download URLs.
-    _finalise_job(job_id, status="completed", output_path=output_path)
+    _finalise_job(job_id, status="completed", output_path=output_path, page_count=page_count, token_count=token_count)
 
     _, _, media_type = OUTPUT_FORMAT_MAP[output_format]
     return FileResponse(
@@ -399,7 +421,7 @@ async def stream_v2(
     user_id = request.headers.get("x-user-id") or "anonymous"
     _create_job(job_id, filename, template, output_format, user_id=user_id)
 
-    job_dir = Path(f"/tmp/docstream/{job_id}")
+    job_dir = TEMP_BASE / job_id
     input_dir = job_dir / "input"
     output_dir = job_dir / "output"
     input_dir.mkdir(parents=True, exist_ok=True)
@@ -444,11 +466,28 @@ async def stream_v2(
                 yield f"data: {payload}\n\n"
                 step = event.get("step")
                 if step == "done":
-                    # The docstream pipeline produced both .tex and .pdf.
+                    # Find the actual PDF file on disk (event["pdf_url"] is a URL
+                    # like /api/v2/files/..., not a filesystem path).
+                    pdf_path: Path | None = None
+                    pdf_files = list(output_dir.glob("*.pdf"))
+                    if pdf_files:
+                        pdf_path = pdf_files[0]
+                    page_count = 0
+                    if pdf_path and pdf_path.exists():
+                        try:
+                            import fitz
+
+                            doc = fitz.open(str(pdf_path))
+                            page_count = doc.page_count
+                            doc.close()
+                        except Exception:  # noqa: BLE001
+                            pass
                     _finalise_job(
                         job_id,
                         status="completed",
-                        output_path=Path(event["pdf_url"]) if event.get("pdf_url") else None,
+                        output_path=pdf_path,
+                        page_count=page_count,
+                        token_count=0,
                     )
                     yield "data: [DONE]\n\n"
                     return
@@ -498,7 +537,7 @@ async def serve_file(job_id: str, filename: str):
             detail="Only .tex, .pdf, and image files are served.",
         )
 
-    file_path = Path(f"/tmp/docstream/{job_id}/output/{filename}")
+    file_path = TEMP_BASE / job_id / "output" / filename
     if not file_path.exists():
         from fastapi import HTTPException
 

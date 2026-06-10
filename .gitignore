@@ -105,6 +105,7 @@ lerna-debug.log*
 .secrets/
 
 # ---------- DocStream artifacts ----------
+storage/
 docstream_output/
 out/
 demo_out/

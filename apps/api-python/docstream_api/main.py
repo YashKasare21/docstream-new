@@ -22,16 +22,14 @@ from docstream_api.routes.convert import router as convert_router  # noqa: E402
 from docstream_api.routes.feedback import router as feedback_router  # noqa: E402
 from docstream_api.routes.health import router as health_router  # noqa: E402
 from docstream_api.routes.jobs import router as jobs_router  # noqa: E402
-from docstream_api.utils.file_handler import cleanup_old_jobs  # noqa: E402
+from docstream_api.utils.file_handler import TEMP_BASE, cleanup_old_jobs  # noqa: E402
 from docstream_api.utils.rate_limit import limiter  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-TEMP_BASE = Path("/tmp/docstream")
-
 
 async def _cleanup_loop() -> None:
-    """Background task: delete /tmp/docstream jobs older than 1 hour.
+    """Background task: delete storage/jobs directories older than 1 hour.
 
     Removes the corresponding ``Job`` record from the SQLAlchemy DB so
     the filesystem and the job-history view stay in sync.
@@ -76,6 +74,9 @@ async def _cleanup_loop() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
+    # Ensure persistent storage directory exists.
+    TEMP_BASE.mkdir(parents=True, exist_ok=True)
+
     # Legacy feedback tables (sqlite3, raw SQL).
     init_db()
     # SQLAlchemy ORM tables for job history.
