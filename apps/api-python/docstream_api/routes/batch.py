@@ -28,8 +28,8 @@ from typing import Iterable
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
 
 from docstream_api import database as database_module
-from docstream_api.auth import get_current_user
-from docstream_api.db_models import Job
+from docstream_api.db_models import Job, User
+from docstream_api.limits import require_quota
 from docstream_api.routes.convert import SUPPORTED_EXTENSIONS, _finalise_job
 from docstream_api.services.converter import convert_document
 from docstream_api.utils.file_handler import TEMP_BASE
@@ -177,14 +177,14 @@ async def batch_convert(
     request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
+    _quota_user: User = Depends(require_quota),
 ) -> dict:
     """
     Accept a ``.zip`` archive and queue each supported document inside
     for conversion. Returns ``202 Accepted`` with a list of queued
     ``job_id``s; the actual processing happens in a background task.
     """
-    user_id = current_user["email"]
+    user_id = _quota_user.email
     template = request.query_params.get("template", "report")
     output_format = request.query_params.get("output_format", "pdf")
 

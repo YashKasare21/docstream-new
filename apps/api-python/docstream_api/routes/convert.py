@@ -19,8 +19,8 @@ from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from docstream_api import database as database_module
-from docstream_api.auth import get_current_user
-from docstream_api.db_models import Job
+from docstream_api.db_models import Job, User
+from docstream_api.limits import require_quota
 from docstream_api.services.converter import (
     MAX_FILE_SIZE_MB,
     OUTPUT_FORMAT_MAP,
@@ -154,7 +154,7 @@ async def convert_v2(
             "(~200 MB model download)."
         ),
     ),
-    current_user: dict = Depends(get_current_user),
+    _user_and_quota: User = Depends(require_quota),
 ):
     """
     Convert an uploaded document to LaTeX and (optionally) re-export to
@@ -219,7 +219,7 @@ async def convert_v2(
 
     # Record the job in the DB before doing any work so it always
     # appears in history (even if the upload is interrupted).
-    user_id = current_user["email"]
+    user_id = _user_and_quota.email
     _create_job(job_id, filename, template, output_format, user_id=user_id)
 
     # Set up job directories
@@ -375,7 +375,7 @@ async def stream_v2(
             "significant latency on first run (~200 MB model download)."
         ),
     ),
-    current_user: dict = Depends(get_current_user),
+    _user_and_quota: User = Depends(require_quota),
 ):
     """
     Convert an uploaded document and stream the LaTeX output
@@ -420,7 +420,7 @@ async def stream_v2(
 
     # Record the job up-front so it shows up in /api/v2/jobs even if
     # the client disconnects mid-stream.
-    user_id = current_user["email"]
+    user_id = _user_and_quota.email
     _create_job(job_id, filename, template, output_format, user_id=user_id)
 
     job_dir = TEMP_BASE / job_id

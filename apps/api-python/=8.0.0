@@ -1,0 +1,12 @@
+Collecting stripe
+  Downloading stripe-15.2.0-py3-none-any.whl.metadata (18 kB)
+Requirement already satisfied: typing_extensions>=4.7.0 in /home/yash/Desktop/Projects/docstream-ai/.venv/lib/python3.12/site-packages (from stripe) (4.15.0)
+Requirement already satisfied: requests>=2.20 in /home/yash/Desktop/Projects/docstream-ai/.venv/lib/python3.12/site-packages (from stripe) (2.34.2)
+Requirement already satisfied: charset_normalizer<4,>=2 in /home/yash/Desktop/Projects/docstream-ai/.venv/lib/python3.12/site-packages (from requests>=2.20->stripe) (3.4.7)
+Requirement already satisfied: idna<4,>=2.5 in /home/yash/Desktop/Projects/docstream-ai/.venv/lib/python3.12/site-packages (from requests>=2.20->stripe) (3.18)
+Requirement already satisfied: urllib3<3,>=1.26 in /home/yash/Desktop/Projects/docstream-ai/.venv/lib/python3.12/site-packages (from requests>=2.20->stripe) (2.7.0)
+Requirement already satisfied: certifi>=2023.5.7 in /home/yash/Desktop/Projects/docstream-ai/.venv/lib/python3.12/site-packages (from requests>=2.20->stripe) (2026.5.20)
+Downloading stripe-15.2.0-py3-none-any.whl (2.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.2/2.2 MB 8.8 MB/s  0:00:00
+Installing collected packages: stripe
+Successfully installed stripe-15.2.0

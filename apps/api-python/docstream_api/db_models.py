@@ -1,10 +1,18 @@
-"""SQLAlchemy ORM models for the DocStream API.
+"""
+SQLAlchemy ORM models for the DocStream API.
 
 Tables are created automatically via ``Base.metadata.create_all(engine)``
 on application startup — no Alembic migrations needed. The SQLite file
 lives at a project-relative path (``DOCSTREAM_DB_PATH`` or the default
-``docstream.db`` in the API package directory) so jobs survive container
+``docstream.db`` in the API package directory) so data survives container
 restarts.
+
+User model
+----------
+Users are created on first interaction (when a JWT-authenticated request
+hits a protected endpoint). The relationship between ``User`` and ``Job``
+is implicit via ``User.email == Job.user_id`` — there is no foreign key
+constraint.
 """
 
 from __future__ import annotations
@@ -24,12 +32,36 @@ class Base(DeclarativeBase):
     """Shared declarative base for all ORM models."""
 
 
+class User(Base):
+    """Registered user linked to a Stripe subscription.
+
+    ``email`` is the join key to ``Job.user_id`` — no FK constraint.
+    """
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    email: Mapped[str] = mapped_column(String(256), unique=True, nullable=False)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    plan: Mapped[str] = mapped_column(String(16), nullable=False, default="free")
+    monthly_usage: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
+        return (
+            f"User(id={self.id!r}, email={self.email!r}, "
+            f"plan={self.plan!r}, monthly_usage={self.monthly_usage})"
+        )
+
+
 class Job(Base):
     """Persistent record for a single conversion request.
 
     Status transitions:
         ``processing`` -> ``completed`` on success
         ``processing`` -> ``failed``    on error
+
+    ``user_id`` is a plain string (the user's email). The implicit
+    relationship with ``User`` is via ``User.email == Job.user_id``.
     """
 
     __tablename__ = "jobs"
@@ -77,4 +109,4 @@ class Job(Base):
         }
 
 
-__all__ = ["Base", "Job", "utcnow"]
+__all__ = ["Base", "User", "Job", "utcnow"]

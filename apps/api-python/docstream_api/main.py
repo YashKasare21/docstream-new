@@ -17,6 +17,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")  # noqa: E402
 
 from docstream_api.database import init_db, init_jobs_db  # noqa: E402
 from docstream_api.routes.batch import router as batch_router  # noqa: E402
+from docstream_api.routes.billing import router as billing_router  # noqa: E402
 from docstream_api.routes.compile import router as compile_router  # noqa: E402
 from docstream_api.routes.convert import router as convert_router  # noqa: E402
 from docstream_api.routes.feedback import router as feedback_router  # noqa: E402
@@ -128,6 +129,7 @@ app.add_middleware(
 
 # Routes
 app.include_router(batch_router)
+app.include_router(billing_router)
 app.include_router(compile_router)
 app.include_router(convert_router)
 app.include_router(feedback_router)

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileCode, Menu, X, Zap, Moon, Sun, LogIn, LogOut, History } from "lucide-react";
+import { FileCode, Menu, X, Zap, Moon, Sun, LogIn, LogOut, History, CreditCard } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -88,13 +88,22 @@ export default function Navbar() {
             </Link>
             {/* History link — only when signed in */}
             {isAuthenticated && (
-              <Link
-                href="/history"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 inline-flex items-center gap-1"
-              >
-                <History className="w-4 h-4" />
-                History
-              </Link>
+              <>
+                <Link
+                  href="/history"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 inline-flex items-center gap-1"
+                >
+                  <History className="w-4 h-4" />
+                  History
+                </Link>
+                <Link
+                  href="/billing"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 inline-flex items-center gap-1"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Billing
+                </Link>
+              </>
             )}
             {/* Auth controls */}
             {isAuthenticated ? (

@@ -1,10 +1,10 @@
+import importlib
 import io
 import os
+from pathlib import Path
 
 import jwt
 import pytest
-from docstream_api.main import app
-from docstream_api.utils.rate_limit import limiter
 from fastapi.testclient import TestClient
 
 # CI runners don't ship XeLaTeX. The lifespan guard in
@@ -25,19 +25,56 @@ def make_token(email: str) -> str:
 
 
 @pytest.fixture(autouse=True)
-def _reset_rate_limiter():
-    """Clear the slowapi in-memory limiter between tests so the
-    ``5/minute`` cap on the convert endpoint doesn't trip when several
-    test cases exercise it in a row."""
-    limiter.reset()
+def _disable_rate_limiter_for_tests(monkeypatch):
+    """Replace ``Limiter.limit`` with a no-op so rate limits don't affect tests."""
+    from slowapi.extension import Limiter as _SlowLimiter
+
+    def _noop_limit(*_args, **_kwargs):
+        def _decorator(func):
+            return func
+        return _decorator
+
+    monkeypatch.setattr(_SlowLimiter, "limit", _noop_limit)
     yield
-    limiter.reset()
 
 
 @pytest.fixture
-def client():
-    """FastAPI test client."""
-    return TestClient(app)
+def client(tmp_path: Path, monkeypatch):
+    """FastAPI test client with a throwaway SQLite DB.
+
+    Reloads ``database`` and ``main`` modules so the engine points at
+    a fresh file, ensuring the ``users`` and ``jobs`` tables are
+    created from the current ``Base.metadata``.
+    """
+    db_path = tmp_path / "test.db"
+    monkeypatch.setenv("DOCSTREAM_DB_PATH", str(db_path))
+    monkeypatch.setenv("DOCSTREAM_ENV", "test")
+    monkeypatch.setenv("NEXTAUTH_SECRET", TEST_SECRET)
+
+    import docstream_api.database as db_module
+    importlib.reload(db_module)
+
+    import docstream_api.routes.convert as convert_module
+    importlib.reload(convert_module)
+
+    import docstream_api.routes.batch as batch_module
+    importlib.reload(batch_module)
+
+    import docstream_api.main as main_module
+    importlib.reload(main_module)
+
+    db_module.init_jobs_db()
+
+    # Attach rate limiter to app state (normally done in lifespan)
+    from docstream_api.utils.rate_limit import limiter as _limiter
+    main_module.app.state.limiter = _limiter
+
+    yield TestClient(main_module.app)
+
+    importlib.reload(batch_module)
+    importlib.reload(convert_module)
+    importlib.reload(main_module)
+    importlib.reload(db_module)
 
 
 @pytest.fixture
