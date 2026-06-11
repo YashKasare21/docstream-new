@@ -15,7 +15,7 @@ from slowapi.errors import RateLimitExceeded
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")  # noqa: E402
 
-from docstream_api.database import init_db, init_jobs_db  # noqa: E402
+from docstream_api.database import init_db  # noqa: E402
 from docstream_api.routes.batch import router as batch_router  # noqa: E402
 from docstream_api.routes.billing import router as billing_router  # noqa: E402
 from docstream_api.routes.compile import router as compile_router  # noqa: E402
@@ -80,8 +80,9 @@ async def lifespan(app: FastAPI):
 
     # Legacy feedback tables (sqlite3, raw SQL).
     init_db()
-    # SQLAlchemy ORM tables for job history.
-    init_jobs_db()
+    # Alembic handles ORM table creation via migrations.
+    # init_jobs_db() is removed — run ``alembic upgrade head`` manually
+    # or as part of the deployment startup.
     cleanup_old_jobs()
     result = subprocess.run(["which", "xelatex"], capture_output=True, text=True)
     logger.info(f"xelatex location: {result.stdout.strip()}")
