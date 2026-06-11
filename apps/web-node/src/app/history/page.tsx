@@ -4,27 +4,15 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { History as HistoryIcon, Download, LogIn } from "lucide-react";
+import { fetchJobs, type JobRow } from "@/lib/api";
 
 /**
  * Job history for the signed-in user.
  *
- * Calls ``GET /api/v2/jobs?user_id={email}`` and renders a clean
- * table. Server-side filtering keeps each user's history isolated.
+ * Uses the ``fetchJobs()`` helper which automatically attaches the
+ * JWT Bearer token via the token proxy. The backend filters jobs by
+ * the authenticated user's email, preventing IDOR attacks.
  */
-interface JobRow {
-  id: string;
-  user_id: string;
-  input_filename: string;
-  template: string;
-  output_format: string;
-  status: string;
-  created_at: string | null;
-  output_pdf_path: string | null;
-  output_tex_path: string | null;
-  error_message: string | null;
-  pdf_url: string | null;
-  tex_url: string | null;
-}
 
 interface JobsResponse {
   count: number;
@@ -64,19 +52,11 @@ export default function HistoryPage() {
   useEffect(() => {
     if (status !== "authenticated" || !userEmail) return;
     const controller = new AbortController();
-    const fetchJobs = async () => {
+    const loadJobs = async () => {
       setLoading(true);
       setError(null);
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
-        const res = await fetch(
-          `${apiBase}/api/v2/jobs?user_id=${encodeURIComponent(userEmail)}`,
-          { signal: controller.signal },
-        );
-        if (!res.ok) {
-          throw new Error(`Backend returned ${res.status}`);
-        }
-        const data: JobsResponse = await res.json();
+        const data: JobsResponse = await fetchJobs();
         setJobs(data.jobs ?? []);
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
@@ -85,7 +65,7 @@ export default function HistoryPage() {
         setLoading(false);
       }
     };
-    fetchJobs();
+    loadJobs();
     return () => controller.abort();
   }, [status, userEmail]);
 

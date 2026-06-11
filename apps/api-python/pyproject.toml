@@ -37,6 +37,7 @@ dependencies = [
     "aiofiles>=23.0.0",
     "slowapi>=0.1.9",
     "SQLAlchemy>=2.0.0",
+    "PyJWT>=2.0.0",
 ]
 
 [project.optional-dependencies]

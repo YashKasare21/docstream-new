@@ -15,10 +15,11 @@ import logging
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from docstream_api import database as database_module
+from docstream_api.auth import get_current_user
 from docstream_api.db_models import Job
 from docstream_api.services.converter import (
     MAX_FILE_SIZE_MB,
@@ -60,10 +61,9 @@ def _create_job(
 ) -> None:
     """Insert a new ``Job`` row in ``processing`` state.
 
-    ``user_id`` is typically the caller's email (passed via the
-    ``x-user-id`` header from the Next.js frontend after NextAuth sign-
-    in). Unauthenticated callers fall back to ``"anonymous"`` so
-    pre-login conversions still appear in history.
+    ``user_id`` is typically the caller's email (extracted from the
+    JWT token by the ``get_current_user`` dependency). Unauthenticated
+    callers fall back to ``"anonymous"``.
 
     Failures are logged but never bubble up — a missing DB row should
     not block the user-facing conversion flow.
@@ -154,6 +154,7 @@ async def convert_v2(
             "(~200 MB model download)."
         ),
     ),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Convert an uploaded document to LaTeX and (optionally) re-export to
@@ -218,7 +219,7 @@ async def convert_v2(
 
     # Record the job in the DB before doing any work so it always
     # appears in history (even if the upload is interrupted).
-    user_id = request.headers.get("x-user-id") or "anonymous"
+    user_id = current_user["email"]
     _create_job(job_id, filename, template, output_format, user_id=user_id)
 
     # Set up job directories
@@ -374,6 +375,7 @@ async def stream_v2(
             "significant latency on first run (~200 MB model download)."
         ),
     ),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Convert an uploaded document and stream the LaTeX output
@@ -418,7 +420,7 @@ async def stream_v2(
 
     # Record the job up-front so it shows up in /api/v2/jobs even if
     # the client disconnects mid-stream.
-    user_id = request.headers.get("x-user-id") or "anonymous"
+    user_id = current_user["email"]
     _create_job(job_id, filename, template, output_format, user_id=user_id)
 
     job_dir = TEMP_BASE / job_id

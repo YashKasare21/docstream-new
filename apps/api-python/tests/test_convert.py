@@ -17,9 +17,9 @@ def test_health_endpoint_returns_ok(client):
 # ── 2. Invalid file type ──
 
 
-def test_convert_unsupported_extension_rejected(client):
+def test_convert_unsupported_extension_rejected(client, auth_header):
     files = {"file": ("test.doc", io.BytesIO(b"hello world"), "application/msword")}
-    resp = client.post("/api/v2/convert", files=files, data={"template": "report"})
+    resp = client.post("/api/v2/convert", files=files, data={"template": "report"}, headers=auth_header)
     assert resp.status_code == 400
     data = resp.json()
     assert data["success"] is False
@@ -30,7 +30,7 @@ def test_convert_unsupported_extension_rejected(client):
 
 
 def test_convert_valid_pdf_returns_pdf_file(
-    client, sample_pdf_upload, mock_convert_result, tmp_path
+    client, auth_header, sample_pdf_upload, mock_convert_result, tmp_path
 ):
     # Point the mock at a real on-disk file so FileResponse can serve it.
     fake_pdf = tmp_path / "document.pdf"
@@ -43,6 +43,7 @@ def test_convert_valid_pdf_returns_pdf_file(
             "/api/v2/convert",
             files=sample_pdf_upload,
             data={"template": "report"},
+            headers=auth_header,
         )
 
     assert resp.status_code == 200
@@ -54,12 +55,12 @@ def test_convert_valid_pdf_returns_pdf_file(
 # ── 4. Extraction error returns clean message ──
 
 
-def test_convert_error_returns_clean_message(client, sample_pdf_upload):
+def test_convert_error_returns_clean_message(client, auth_header, sample_pdf_upload):
     with patch(
         "docstream.convert",
         side_effect=docstream.ExtractionError("raw error"),
     ):
-        resp = client.post("/api/v2/convert", files=sample_pdf_upload, data={"template": "report"})
+        resp = client.post("/api/v2/convert", files=sample_pdf_upload, data={"template": "report"}, headers=auth_header)
     # Service swallows exceptions and returns success=False with 500
     assert resp.status_code == 500
     data = resp.json()
@@ -71,8 +72,8 @@ def test_convert_error_returns_clean_message(client, sample_pdf_upload):
 # ── 5. Unknown template rejected ──
 
 
-def test_convert_unknown_template_rejected(client, sample_pdf_upload):
-    resp = client.post("/api/v2/convert", files=sample_pdf_upload, data={"template": "unknown"})
+def test_convert_unknown_template_rejected(client, auth_header, sample_pdf_upload):
+    resp = client.post("/api/v2/convert", files=sample_pdf_upload, data={"template": "unknown"}, headers=auth_header)
     assert resp.status_code == 400
     data = resp.json()
     assert data["success"] is False
@@ -83,7 +84,7 @@ def test_convert_unknown_template_rejected(client, sample_pdf_upload):
 
 
 def test_convert_docx_output_invokes_pandoc_and_returns_docx(
-    client, sample_pdf_upload, mock_convert_result, tmp_path
+    client, auth_header, sample_pdf_upload, mock_convert_result, tmp_path
 ):
     from docstream_api.services import converter as svc
 
@@ -104,6 +105,7 @@ def test_convert_docx_output_invokes_pandoc_and_returns_docx(
             "/api/v2/convert?output_format=docx",
             files=sample_pdf_upload,
             data={"template": "report"},
+            headers=auth_header,
         )
 
     assert resp.status_code == 200
@@ -121,7 +123,7 @@ def test_convert_docx_output_invokes_pandoc_and_returns_docx(
 
 
 def test_convert_docx_returns_501_when_pandoc_missing(
-    client, sample_pdf_upload, mock_convert_result, tmp_path
+    client, auth_header, sample_pdf_upload, mock_convert_result, tmp_path
 ):
     from docstream.exceptions import RenderingError
     from docstream_api.services import converter as svc
@@ -141,6 +143,7 @@ def test_convert_docx_returns_501_when_pandoc_missing(
             "/api/v2/convert?output_format=docx",
             files=sample_pdf_upload,
             data={"template": "report"},
+            headers=auth_header,
         )
 
     assert resp.status_code == 501
@@ -152,11 +155,12 @@ def test_convert_docx_returns_501_when_pandoc_missing(
 # ── 8. Invalid output_format rejected by query pattern (422) ──
 
 
-def test_convert_invalid_output_format_rejected(client, sample_pdf_upload):
+def test_convert_invalid_output_format_rejected(client, auth_header, sample_pdf_upload):
     resp = client.post(
         "/api/v2/convert?output_format=mp4",
         files=sample_pdf_upload,
         data={"template": "report"},
+        headers=auth_header,
     )
     # FastAPI returns 422 for Query pattern violations
     assert resp.status_code == 422
@@ -165,11 +169,12 @@ def test_convert_invalid_output_format_rejected(client, sample_pdf_upload):
 # ── 9. Stream endpoint restricted to PDF ──
 
 
-def test_stream_rejects_non_pdf_output_format(client, sample_pdf_upload):
+def test_stream_rejects_non_pdf_output_format(client, auth_header, sample_pdf_upload):
     resp = client.post(
         "/api/v2/stream?output_format=docx",
         files=sample_pdf_upload,
         data={"template": "report"},
+        headers=auth_header,
     )
     # FastAPI returns 422 for Query pattern violations (^(pdf)$)
     assert resp.status_code == 422

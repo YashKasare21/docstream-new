@@ -12,17 +12,53 @@ export interface ConvertResult {
   error?: string;
 }
 
+/** Interface for the job history endpoints. */
+export interface JobRow {
+  id: string;
+  user_id: string;
+  input_filename: string;
+  template: string;
+  output_format: string;
+  status: string;
+  created_at: string | null;
+  output_pdf_path: string | null;
+  output_tex_path: string | null;
+  error_message: string | null;
+  pdf_url: string | null;
+  tex_url: string | null;
+}
+
+export interface JobsResponse {
+  count: number;
+  jobs: JobRow[];
+}
+
 /**
- * Build the standard headers used by every backend call. Includes
- * ``x-user-id`` when an identifier is provided so the API can scope
- * the resulting job to that user.
+ * Fetch the raw JWT from the Next.js token proxy route.
+ *
+ * Must be called from the browser — the proxy reads the httpOnly
+ * cookie set by NextAuth on the server side. Returns ``null`` when
+ * the user is not signed in.
  */
-function buildHeaders(userId?: string): HeadersInit {
-  const headers: Record<string, string> = {};
-  if (userId) {
-    headers["x-user-id"] = userId;
+async function getAuthToken(): Promise<string | null> {
+  try {
+    const res = await fetch("/api/auth/token");
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.token ?? null;
+  } catch {
+    return null;
   }
-  return headers;
+}
+
+/**
+ * Build the standard headers used by every backend call.
+ * Attaches the Bearer JWT token when available.
+ */
+async function buildHeaders(): Promise<{ Authorization?: string }> {
+  const token = await getAuthToken();
+  if (!token) return {};
+  return { Authorization: `Bearer ${token}` };
 }
 
 export async function convertDocument(
@@ -30,7 +66,6 @@ export async function convertDocument(
   template: string,
   onProgress?: (stage: number) => void,
   output_format?: string,
-  userId?: string,
 ): Promise<ConvertResult> {
   const formData = new FormData();
   formData.append("file", file);
@@ -42,7 +77,7 @@ export async function convertDocument(
   const response = await fetch(`${API_BASE_URL}/api/v2/convert${query}`, {
     method: "POST",
     body: formData,
-    headers: buildHeaders(userId),
+    headers: await buildHeaders(),
     // No Content-Type header — browser sets it with multipart boundary
   });
 
@@ -105,7 +140,6 @@ export async function streamDocument(
   template: string,
   onChunk: (event: StreamEvent) => void,
   signal?: AbortSignal,
-  userId?: string,
 ): Promise<ConvertResult> {
   const formData = new FormData();
   formData.append("file", file);
@@ -114,7 +148,7 @@ export async function streamDocument(
   const response = await fetch(`${API_BASE_URL}/api/v2/stream`, {
     method: "POST",
     body: formData,
-    headers: buildHeaders(userId),
+    headers: await buildHeaders(),
     signal,
   });
 
@@ -259,7 +293,6 @@ export interface BatchAcceptedResponse {
  */
 export async function batchConvert(
   file: File,
-  userId?: string,
   options?: { template?: string; outputFormat?: string },
 ): Promise<BatchAcceptedResponse> {
   const formData = new FormData();
@@ -273,7 +306,7 @@ export async function batchConvert(
   const response = await fetch(`${API_BASE_URL}/api/v2/batch${query}`, {
     method: "POST",
     body: formData,
-    headers: buildHeaders(userId),
+    headers: await buildHeaders(),
   });
 
   if (!response.ok) {
@@ -290,4 +323,19 @@ export async function batchConvert(
   }
 
   return (await response.json()) as BatchAcceptedResponse;
+}
+
+/**
+ * Fetch the authenticated user's job history from the backend.
+ *
+ * The JWT token is automatically fetched and attached by ``buildHeaders()``.
+ */
+export async function fetchJobs(): Promise<JobsResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v2/jobs`, {
+    headers: await buildHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch jobs: ${response.status} ${response.statusText}`);
+  }
+  return (await response.json()) as JobsResponse;
 }

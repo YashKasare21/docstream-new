@@ -1,6 +1,7 @@
 import io
 import os
 
+import jwt
 import pytest
 from docstream_api.main import app
 from docstream_api.utils.rate_limit import limiter
@@ -12,6 +13,15 @@ from fastapi.testclient import TestClient
 # missing. Set it once at import time so every TestClient (including
 # the ones in test_jobs.py) bypasses the hard stop.
 os.environ.setdefault("DOCSTREAM_ENV", "test")
+
+# Shared test secret for JWT auth — matches ``docstream_api.auth.get_current_user``.
+TEST_SECRET = "test-secret-for-ci-do-not-use-in-production"
+os.environ["NEXTAUTH_SECRET"] = TEST_SECRET
+
+
+def make_token(email: str) -> str:
+    """Create a signed HS256 JWT for the given email."""
+    return jwt.encode({"email": email}, TEST_SECRET, algorithm="HS256")
 
 
 @pytest.fixture(autouse=True)
@@ -28,6 +38,13 @@ def _reset_rate_limiter():
 def client():
     """FastAPI test client."""
     return TestClient(app)
+
+
+@pytest.fixture
+def auth_header() -> dict:
+    """Standard ``Authorization: Bearer <token>`` header."""
+    token = make_token("test@example.com")
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture

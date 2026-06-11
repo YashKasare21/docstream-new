@@ -11,8 +11,25 @@ import io
 from pathlib import Path
 from unittest.mock import patch
 
+import jwt
 import pytest
 from fastapi.testclient import TestClient
+
+# Shared test secret — must match what ``docstream_api.auth.get_current_user``
+# reads from ``NEXTAUTH_SECRET``.
+TEST_SECRET = "test-secret-for-ci-do-not-use-in-production"
+
+
+def _make_token(email: str) -> str:
+    """Create a signed HS256 JWT for the given email."""
+    return jwt.encode({"email": email}, TEST_SECRET, algorithm="HS256")
+
+
+@pytest.fixture(autouse=True)
+def _set_auth_env(monkeypatch):
+    """Set ``NEXTAUTH_SECRET`` so the auth dependency can decode tokens."""
+    monkeypatch.setenv("NEXTAUTH_SECRET", TEST_SECRET)
+    yield
 
 
 @pytest.fixture(autouse=True)
@@ -71,8 +88,9 @@ def fresh_jobs_db(tmp_path: Path, monkeypatch):
 def test_jobs_endpoints_require_no_existing_data(fresh_jobs_db):
     """A fresh DB returns an empty list, not a 500."""
     _db_module, main_module, _path = fresh_jobs_db
+    token = _make_token("alice@example.com")
     client = TestClient(main_module.app)
-    resp = client.get("/api/v2/jobs")
+    resp = client.get("/api/v2/jobs", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     body = resp.json()
     assert body["count"] == 0
@@ -105,18 +123,20 @@ def test_job_persists_through_convert_endpoint(fresh_jobs_db, tmp_path):
         b"xref\n0 3\n0000000000 65535 f \n%%EOF\n"
     )
 
+    token = _make_token("alice@example.com")
     client = TestClient(main_module.app)
     with patch.object(convert_module, "convert_document", new=fake_convert):
         with client:
             resp = client.post(
                 "/api/v2/convert",
+                headers={"Authorization": f"Bearer {token}"},
                 files={"file": ("paper.pdf", _io(sample_pdf_bytes), "application/pdf")},
                 data={"template": "report"},
             )
 
     assert resp.status_code == 200, resp.text
 
-    listing = client.get("/api/v2/jobs").json()
+    listing = client.get("/api/v2/jobs", headers={"Authorization": f"Bearer {token}"}).json()
     assert listing["count"] == 1
     job = listing["jobs"][0]
     assert job["status"] == "completed"
@@ -124,7 +144,7 @@ def test_job_persists_through_convert_endpoint(fresh_jobs_db, tmp_path):
     assert job["output_format"] == "pdf"
     assert job["output_pdf_path"] == str(output_pdf)
 
-    detail = client.get(f"/api/v2/jobs/{job['id']}").json()
+    detail = client.get(f"/api/v2/jobs/{job['id']}", headers={"Authorization": f"Bearer {token}"}).json()
     assert detail["status"] == "completed"
     assert detail["pdf_url"] == f"/api/v2/files/{job['id']}/result.pdf"
 
@@ -149,11 +169,13 @@ def test_failed_conversion_records_failed_status(fresh_jobs_db):
         b"xref\n0 3\n0000000000 65535 f \n%%EOF\n"
     )
 
+    token = _make_token("alice@example.com")
     client = TestClient(main_module.app)
     with patch.object(convert_module, "convert_document", new=fake_convert):
         with client:
             client.post(
                 "/api/v2/convert",
+                headers={"Authorization": f"Bearer {token}"},
                 files={"file": ("paper.pdf", _io(sample_pdf_bytes), "application/pdf")},
                 data={"template": "report"},
             )
@@ -161,13 +183,13 @@ def test_failed_conversion_records_failed_status(fresh_jobs_db):
     # The contract we actually care about: the Job row exists with
     # status "failed" and the error message preserved. The exact HTTP
     # status code is incidental — the persistence layer is the point.
-    listing = client.get("/api/v2/jobs").json()
+    listing = client.get("/api/v2/jobs", headers={"Authorization": f"Bearer {token}"}).json()
     assert listing["count"] == 1, listing
     failed_job = listing["jobs"][0]
     assert failed_job["status"] == "failed"
     assert "Pix2tex" in (failed_job["error_message"] or "")
 
-    listing = client.get("/api/v2/jobs").json()
+    listing = client.get("/api/v2/jobs", headers={"Authorization": f"Bearer {token}"}).json()
     assert listing["count"] == 1
     assert listing["jobs"][0]["status"] == "failed"
     assert "Pix2tex" in (listing["jobs"][0]["error_message"] or "")
@@ -175,35 +197,33 @@ def test_failed_conversion_records_failed_status(fresh_jobs_db):
 
 def test_get_unknown_job_returns_404(fresh_jobs_db):
     _db_module, main_module, _path = fresh_jobs_db
+    token = _make_token("alice@example.com")
     client = TestClient(main_module.app)
-    resp = client.get("/api/v2/jobs/does-not-exist")
+    resp = client.get("/api/v2/jobs/does-not-exist", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 404
 
 
-def test_user_id_header_tags_job(fresh_jobs_db):
-    """``x-user-id`` header should be persisted on the Job row."""
+def test_jwt_token_tags_job(fresh_jobs_db):
+    """JWT email should be persisted as ``user_id`` on the Job row."""
     _db_module, main_module, _path = fresh_jobs_db
+    token = _make_token("alice@example.com")
     client = TestClient(main_module.app)
-    resp = client.post(
+    client.post(
         "/api/v2/convert",
-        headers={"x-user-id": "alice@example.com"},
+        headers={"Authorization": f"Bearer {token}"},
         files={"file": ("hello.pdf", _io(b"%PDF-1.4\n%%EOF\n"), "application/pdf")},
         data={"template": "report"},
     )
-    assert resp.status_code in (200, 500)  # body irrelevant — only DB tag matters
 
-    listing = client.get("/api/v2/jobs?user_id=alice@example.com").json()
+    # Listing with Alice's token returns the job.
+    listing = client.get("/api/v2/jobs", headers={"Authorization": f"Bearer {token}"}).json()
     assert listing["count"] == 1
     assert listing["jobs"][0]["user_id"] == "alice@example.com"
 
-    # And filtering by another user returns nothing.
-    other = client.get("/api/v2/jobs?user_id=bob@example.com").json()
+    # And a different user sees nothing (IDOR protection).
+    bob_token = _make_token("bob@example.com")
+    other = client.get("/api/v2/jobs", headers={"Authorization": f"Bearer {bob_token}"}).json()
     assert other["count"] == 0
-
-    # Anonymous fallback still works.
-    anon = client.get("/api/v2/jobs").json()
-    assert anon["count"] == 1
-    assert anon["jobs"][0]["user_id"] == "alice@example.com"
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────

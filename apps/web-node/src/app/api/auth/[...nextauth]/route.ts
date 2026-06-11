@@ -1,58 +1,42 @@
 import NextAuth, { AuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 
 /**
  * NextAuth configuration.
  *
- * Demo-only Credentials provider — any non-empty email is accepted.
- * In a real deployment swap this for OAuth or a backed user store
- * (and a real password hash check).
+ * Real Google OAuth — requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
+ * environment variables. The JWT is signed with HS256 using NEXTAUTH_SECRET.
+ *
+ * Token proxy: the frontend reads the httpOnly cookie via /api/auth/token
+ * to obtain the raw JWT for authenticating against the FastAPI backend.
  */
 export const authOptions: AuthOptions = {
   providers: [
-    CredentialsProvider({
-      name: "Email",
-      credentials: {
-        email: {
-          label: "Email",
-          type: "email",
-          placeholder: "you@example.com",
-        },
-      },
-      async authorize(credentials) {
-        const email = credentials?.email?.trim();
-        if (!email) {
-          return null;
-        }
-        return {
-          id: email,
-          email,
-          name: email,
-        };
-      },
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
     }),
   ],
   session: {
     strategy: "jwt",
+    maxAge: 60 * 60 * 24 * 30, // 30 days
+  },
+  jwt: {
+    maxAge: 60 * 60 * 24 * 30,
   },
   pages: {
     signIn: "/login",
   },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = (user as { id?: string }).id ?? user.email ?? token.sub;
-        token.email = user.email ?? token.email ?? undefined;
+    async jwt({ token, profile }) {
+      if (profile) {
+        token.email = profile.email;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { id?: string }).id =
-          (token as { id?: string }).id ??
-          token.sub ??
-          session.user.email ??
-          undefined;
+        session.user.email = token.email as string;
       }
       return session;
     },

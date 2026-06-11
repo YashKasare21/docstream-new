@@ -14,8 +14,25 @@ import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
+import jwt
 import pytest
 from fastapi.testclient import TestClient
+
+# Shared test secret — must match what ``docstream_api.auth.get_current_user``
+# reads from ``NEXTAUTH_SECRET``.
+TEST_SECRET = "test-secret-for-ci-do-not-use-in-production"
+
+
+def _make_token(email: str) -> str:
+    """Create a signed HS256 JWT for the given email."""
+    return jwt.encode({"email": email}, TEST_SECRET, algorithm="HS256")
+
+
+@pytest.fixture(autouse=True)
+def _set_auth_env(monkeypatch):
+    """Set ``NEXTAUTH_SECRET`` so the auth dependency can decode tokens."""
+    monkeypatch.setenv("NEXTAUTH_SECRET", TEST_SECRET)
+    yield
 
 
 @pytest.fixture(autouse=True)
@@ -98,11 +115,12 @@ def test_batch_endpoint_accepts_valid_zip(fresh_batch_db, tmp_path):
         ]
     )
 
+    token = _make_token("batch-tester@example.com")
     client = TestClient(main_module.app)
     with patch.object(convert_module, "convert_document", new=fake_convert):
         resp = client.post(
             "/api/v2/batch",
-            headers={"x-user-id": "batch-tester@example.com"},
+            headers={"Authorization": f"Bearer {token}"},
             files={"file": ("batch.zip", io.BytesIO(zip_bytes), "application/zip")},
         )
 
@@ -115,7 +133,10 @@ def test_batch_endpoint_accepts_valid_zip(fresh_batch_db, tmp_path):
 
     # The history endpoint should now show both queued jobs tagged
     # to the signed-in user.
-    listing = client.get("/api/v2/jobs?user_id=batch-tester@example.com").json()
+    listing = client.get(
+        "/api/v2/jobs",
+        headers={"Authorization": f"Bearer {token}"},
+    ).json()
     assert listing["count"] == 2
     filenames = sorted(j["input_filename"] for j in listing["jobs"])
     assert filenames == ["doc1.pdf", "notes/latex.tex"]
@@ -145,10 +166,12 @@ def test_batch_endpoint_skips_unsupported_files(fresh_batch_db, tmp_path):
         ]
     )
 
+    token = _make_token("batch-tester@example.com")
     client = TestClient(main_module.app)
     with patch.object(convert_module, "convert_document", new=fake_convert):
         resp = client.post(
             "/api/v2/batch",
+            headers={"Authorization": f"Bearer {token}"},
             files={"file": ("batch.zip", io.BytesIO(zip_bytes), "application/zip")},
         )
 
@@ -162,9 +185,11 @@ def test_batch_endpoint_skips_unsupported_files(fresh_batch_db, tmp_path):
 def test_batch_endpoint_rejects_non_zip(fresh_batch_db):
     """Uploads with a non-.zip extension are rejected at the edge."""
     _db_module, main_module, _convert_module, _batch_module, _ = fresh_batch_db
+    token = _make_token("batch-tester@example.com")
     client = TestClient(main_module.app)
     resp = client.post(
         "/api/v2/batch",
+        headers={"Authorization": f"Bearer {token}"},
         files={"file": ("not-a-zip.pdf", io.BytesIO(b"%PDF-1.4 hi"), "application/pdf")},
     )
     assert resp.status_code == 400
@@ -174,12 +199,14 @@ def test_batch_endpoint_rejects_non_zip(fresh_batch_db):
 def test_batch_endpoint_rejects_path_traversal(fresh_batch_db):
     """Entries with ``..`` in the path are refused before extraction."""
     _db_module, main_module, _convert_module, _batch_module, _ = fresh_batch_db
+    token = _make_token("batch-tester@example.com")
     client = TestClient(main_module.app)
     zip_bytes = _build_zip(
         [("../escape.pdf", b"%PDF-1.4\nhi\n%%EOF\n")],
     )
     resp = client.post(
         "/api/v2/batch",
+        headers={"Authorization": f"Bearer {token}"},
         files={"file": ("evil.zip", io.BytesIO(zip_bytes), "application/zip")},
     )
     assert resp.status_code == 400
@@ -189,12 +216,14 @@ def test_batch_endpoint_rejects_path_traversal(fresh_batch_db):
 def test_batch_endpoint_rejects_too_many_files(fresh_batch_db):
     """A zip with more than 20 entries is rejected (zip-bomb guard)."""
     _db_module, main_module, _convert_module, _batch_module, _ = fresh_batch_db
+    token = _make_token("batch-tester@example.com")
     client = TestClient(main_module.app)
     # 21 tiny PDF files.
     members = [(f"d{i}.pdf", b"%PDF-1.4\nhi\n%%EOF\n") for i in range(21)]
     zip_bytes = _build_zip(members)
     resp = client.post(
         "/api/v2/batch",
+        headers={"Authorization": f"Bearer {token}"},
         files={"file": ("many.zip", io.BytesIO(zip_bytes), "application/zip")},
     )
     assert resp.status_code == 400

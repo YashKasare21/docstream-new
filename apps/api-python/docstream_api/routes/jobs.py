@@ -15,10 +15,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from docstream_api.auth import get_current_user
 from docstream_api.database import get_db
 from docstream_api.db_models import Job
 
@@ -41,28 +42,23 @@ def _build_download_urls(job: Job) -> dict[str, str | None]:
 @router.get("/api/v2/jobs", summary="List recent conversion jobs")
 def list_jobs(
     limit: int = 50,
-    user_id: str | None = None,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ) -> dict:
-    """Return up to ``limit`` jobs ordered by ``created_at`` descending.
+    """Return up to ``limit`` jobs belonging to the authenticated user.
 
     Args:
         limit: Maximum number of rows to return (default 50, capped at 200).
-        user_id: Optional filter — when provided, only jobs whose
-            ``user_id`` column matches are returned. The frontend
-            passes the logged-in user's email here so each user sees
-            their own history.
         db: FastAPI-injected SQLAlchemy session.
+        current_user: Authenticated user from JWT token.
     """
     capped_limit = max(1, min(limit, 200))
-    stmt = select(Job).order_by(Job.created_at.desc()).limit(capped_limit)
-    if user_id:
-        stmt = (
-            select(Job)
-            .where(Job.user_id == user_id)
-            .order_by(Job.created_at.desc())
-            .limit(capped_limit)
-        )
+    stmt = (
+        select(Job)
+        .where(Job.user_id == current_user["email"])
+        .order_by(Job.created_at.desc())
+        .limit(capped_limit)
+    )
     rows = db.execute(stmt).scalars().all()
     jobs = []
     for row in rows:
@@ -79,11 +75,20 @@ def list_jobs(
 def get_job(
     job_id: str,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ) -> dict:
-    """Return details for one job, including download URLs if available."""
+    """Return details for one job, including download URLs if available.
+
+    Raises ``403`` if the job does not belong to the authenticated user (IDOR protection).
+    """
     job = db.get(Job, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found.")
+    if job.user_id != current_user["email"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Not your job",
+        )
     payload = job.to_dict()
     payload.update(_build_download_urls(job))
     return payload

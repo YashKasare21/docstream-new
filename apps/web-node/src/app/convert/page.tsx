@@ -3,7 +3,6 @@
 import { useReducer, useState, useCallback, useEffect, useRef } from "react";
 import { ArrowLeft, ArrowRight, AlertTriangle, Info, Play, RotateCcw } from "lucide-react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import DropZone from "@/components/convert/DropZone";
 import TemplateSelector from "@/components/convert/TemplateSelector";
 import ProgressTracker from "@/components/convert/ProgressTracker";
@@ -94,8 +93,6 @@ export default function ConvertPage() {
   const [selectedFormat, setSelectedFormat] = useState(".pdf");
   const [outputFormat, setOutputFormat] = useState<OutputFormat>("pdf");
   const [backendUp, setBackendUp] = useState<boolean | null>(null);
-  const { data: session } = useSession();
-  const userId = session?.user?.email ?? undefined;
 
   // ── Editor mode state ──
   const [texCode, setTexCode] = useState<string>("");
@@ -134,7 +131,7 @@ export default function ConvertPage() {
     // surface a toast and let the user track progress on /history.
     if (selectedFormat === ".zip") {
       try {
-        const result = await batchConvert(state.file, userId, {
+        const result = await batchConvert(state.file, {
           template,
           outputFormat,
         });
@@ -166,8 +163,6 @@ export default function ConvertPage() {
             accumulated += event.chunk;
             dispatch({ type: "STREAM_CHUNK", chunk: event.chunk, progress: event.progress });
           },
-          undefined,
-          userId,
         );
         dispatch({ type: "COMPLETE", result, texCode: accumulated });
       } else {
@@ -182,7 +177,6 @@ export default function ConvertPage() {
             }
           },
           outputFormat,
-          userId,
         );
         dispatch({ type: "COMPLETE", result, texCode: "" });
       }
@@ -192,7 +186,7 @@ export default function ConvertPage() {
         message: err instanceof Error ? err.message : "An unexpected error occurred.",
       });
     }
-  }, [state, template, outputFormat, canStream, userId, selectedFormat]);
+  }, [state, template, outputFormat, canStream, selectedFormat]);
 
   const handleRecompile = useCallback(async () => {
     if (state.status !== "complete" || !canStream) return;
