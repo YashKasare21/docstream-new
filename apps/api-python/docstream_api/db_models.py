@@ -45,6 +45,9 @@ class User(Base):
     stripe_customer_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
     plan: Mapped[str] = mapped_column(String(16), nullable=False, default="free")
     monthly_usage: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_reset_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
         return (

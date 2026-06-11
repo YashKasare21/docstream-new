@@ -1,29 +1,63 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { CreditCard, CheckCircle, AlertTriangle, ArrowLeft } from "lucide-react";
+import { CreditCard, CheckCircle, AlertTriangle, ArrowLeft, BarChart3 } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+interface UsageData {
+  plan: string;
+  monthly_usage: number;
+  limit: number;
+}
 
 export default function BillingPage() {
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UsageData | null>(null);
+  const [usageLoading, setUsageLoading] = useState(true);
 
   const userEmail = session?.user?.email ?? null;
   const isAuthenticated = status === "authenticated";
+
+  // Fetch usage data on mount
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const controller = new AbortController();
+    const loadUsage = async () => {
+      try {
+        const token = await getClientToken();
+        const res = await fetch(`${API_BASE_URL}/api/v2/billing/usage`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`Failed to load usage: ${res.status}`);
+        const data: UsageData = await res.json();
+        setUsage(data);
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+        setError((err as Error).message);
+      } finally {
+        setUsageLoading(false);
+      }
+    };
+    loadUsage();
+    return () => controller.abort();
+  }, [isAuthenticated]);
 
   const handleUpgrade = async () => {
     setLoading(true);
     setError(null);
     try {
+      const token = await getClientToken();
       const res = await fetch(`${API_BASE_URL}/api/v2/billing/checkout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${await getClientToken()}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       if (!res.ok) {
@@ -69,6 +103,9 @@ export default function BillingPage() {
     );
   }
 
+  const isFree = usage?.plan === "free";
+  const usagePercent = usage && usage.limit > 0 ? Math.round((usage.monthly_usage / usage.limit) * 100) : 0;
+
   return (
     <main className="min-h-screen pt-24 px-4 sm:px-6 lg:px-8 pb-16">
       <div className="max-w-2xl mx-auto">
@@ -94,62 +131,123 @@ export default function BillingPage() {
 
           {/* Current Plan */}
           <div className="rounded-xl border border-border bg-surface/50 backdrop-blur p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Current Plan</h2>
-            <div className="flex items-center gap-3">
-              <span className="text-sm px-3 py-1 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30">
-                Free
-              </span>
-              <span className="text-sm text-muted-foreground">
-                5 conversions per month
-              </span>
-            </div>
-          </div>
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-blue-400" />
+              Current Plan
+            </h2>
 
-          {/* Pro Plan */}
-          <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 backdrop-blur p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                  Pro Plan
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30">
-                    Recommended
+            {usageLoading ? (
+              <p className="text-sm text-muted-foreground">Loading usage data…</p>
+            ) : usage ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`text-sm px-3 py-1 rounded-full border ${
+                      isFree
+                        ? "bg-slate-500/15 text-slate-300 border-slate-500/30"
+                        : "bg-blue-500/15 text-blue-300 border-blue-500/30"
+                    }`}
+                  >
+                    {isFree ? "Free" : "Pro"}
                   </span>
-                </h2>
-                <p className="text-muted-foreground text-sm mt-1">
-                  Unlimited conversions, priority support, and early access to new features.
-                </p>
-              </div>
-            </div>
+                  {isFree ? (
+                    <span className="text-sm text-muted-foreground">
+                      {usage.limit} conversions per month
+                    </span>
+                  ) : (
+                    <span className="text-sm text-emerald-400">
+                      Unlimited conversions
+                    </span>
+                  )}
+                </div>
 
-            <ul className="space-y-2">
-              {[
-                "Unlimited document conversions",
-                "All templates and output formats",
-                "Priority support",
-                "No usage limits",
-              ].map((feature) => (
-                <li key={feature} className="flex items-center gap-2 text-sm text-foreground">
-                  <CheckCircle className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                  {feature}
-                </li>
-              ))}
-            </ul>
-
-            {error && (
-              <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
-                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
-              </div>
+                {/* Usage bar (free only) */}
+                {isFree && (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>
+                        {usage.monthly_usage} / {usage.limit} conversions used
+                      </span>
+                      <span>{usagePercent}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          usagePercent >= 80
+                            ? "bg-red-500"
+                            : usagePercent >= 50
+                              ? "bg-amber-500"
+                              : "bg-blue-500"
+                        }`}
+                        style={{ width: `${Math.min(usagePercent, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-red-400">Failed to load usage data.</p>
             )}
-
-            <button
-              onClick={handleUpgrade}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-base transition-all duration-200 shadow-lg shadow-blue-900/20"
-            >
-              {loading ? "Redirecting to Stripe…" : "Upgrade to Pro"}
-            </button>
           </div>
+
+          {/* Pro Plan — only show upgrade if user is on free */}
+          {isFree && (
+            <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 backdrop-blur p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                    Pro Plan
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                      Recommended
+                    </span>
+                  </h2>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    Unlimited conversions, priority support, and early access to new features.
+                  </p>
+                </div>
+              </div>
+
+              <ul className="space-y-2">
+                {[
+                  "Unlimited document conversions",
+                  "All templates and output formats",
+                  "Priority support",
+                  "No usage limits",
+                ].map((feature) => (
+                  <li key={feature} className="flex items-center gap-2 text-sm text-foreground">
+                    <CheckCircle className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              {error && (
+                <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <button
+                onClick={handleUpgrade}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-base transition-all duration-200 shadow-lg shadow-blue-900/20"
+              >
+                {loading ? "Redirecting to Stripe…" : "Upgrade to Pro"}
+              </button>
+            </div>
+          )}
+
+          {/* Already Pro message */}
+          {!isFree && usage && (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 backdrop-blur p-6 text-center space-y-2">
+              <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto" />
+              <h2 className="text-lg font-semibold text-foreground">You are on the Pro plan!</h2>
+              <p className="text-sm text-muted-foreground">
+                You have unlimited conversions. Manage your subscription in Stripe.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </main>
@@ -158,7 +256,6 @@ export default function BillingPage() {
 
 /**
  * Fetch the auth token from the Next.js token proxy.
- * Duplicated here to keep this page self-contained.
  */
 async function getClientToken(): Promise<string> {
   const res = await fetch("/api/auth/token");
