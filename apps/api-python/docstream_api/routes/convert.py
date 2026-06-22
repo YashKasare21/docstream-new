@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from docstream_api import database as database_module
 from docstream_api.db_models import Job, User
-from docstream_api.limits import require_quota
+from docstream_api.limits import increment_usage, require_quota
 from docstream_api.services.converter import (
     MAX_FILE_SIZE_MB,
     OUTPUT_FORMAT_MAP,
@@ -338,6 +338,8 @@ async def convert_v2(
     # can build download URLs.
     _finalise_job(job_id, status="completed", output_path=output_path, page_count=page_count, token_count=token_count)
 
+    increment_usage(_user_and_quota, _session())
+
     _, _, media_type = OUTPUT_FORMAT_MAP[output_format]
     return FileResponse(
         path=str(output_path),
@@ -491,6 +493,7 @@ async def stream_v2(
                         page_count=page_count,
                         token_count=0,
                     )
+                    increment_usage(_user_and_quota, _session())
                     yield "data: [DONE]\n\n"
                     return
                 if step == "error":

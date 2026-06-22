@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import DateTime, Integer, String, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -112,4 +112,46 @@ class Job(Base):
         }
 
 
-__all__ = ["Base", "User", "Job", "utcnow"]
+class Subscription(Base):
+    """Tracks a user's Stripe subscription."""
+
+    __tablename__ = "subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(256), index=True, nullable=False)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    plan: Mapped[str] = mapped_column(String(16), nullable=False, default="free")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+
+    def __repr__(self) -> str:
+        return (
+            f"Subscription(id={self.id!r}, user_id={self.user_id!r}, "
+            f"plan={self.plan!r}, status={self.status!r})"
+        )
+
+
+class Usage(Base):
+    """Monthly conversion usage tracking per user."""
+
+    __tablename__ = "usage"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(256), index=True, nullable=False)
+    month: Mapped[str] = mapped_column(String(7), nullable=False)
+    conversions_used: Mapped[int] = mapped_column(Integer, default=0)
+    conversions_limit: Mapped[int] = mapped_column(Integer, default=5)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+
+    def __repr__(self) -> str:
+        return (
+            f"Usage(id={self.id!r}, user_id={self.user_id!r}, "
+            f"month={self.month!r}, conversions_used={self.conversions_used})"
+        )
+
+
+__all__ = ["Base", "User", "Job", "Subscription", "Usage", "utcnow"]

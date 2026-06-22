@@ -16,6 +16,7 @@ from slowapi.errors import RateLimitExceeded
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")  # noqa: E402
 
 from docstream_api.database import init_db  # noqa: E402
+from docstream_api.limits import QuotaExceeded  # noqa: E402
 from docstream_api.routes.batch import router as batch_router  # noqa: E402
 from docstream_api.routes.billing import router as billing_router  # noqa: E402
 from docstream_api.routes.compile import router as compile_router  # noqa: E402
@@ -117,6 +118,16 @@ app = FastAPI(
 )
 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(QuotaExceeded)
+async def quota_exceeded_handler(request, exc: QuotaExceeded):
+    from fastapi.responses import JSONResponse
+
+    content: dict[str, str] = {"error": exc.error}
+    if exc.checkout_url:
+        content["checkout_url"] = exc.checkout_url
+    return JSONResponse(status_code=403, content=content)
 
 allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if o.strip()]
 
