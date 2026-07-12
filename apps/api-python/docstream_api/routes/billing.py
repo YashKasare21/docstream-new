@@ -7,7 +7,9 @@ Stripe webhook handling, and customer portal access.
 
 from __future__ import annotations
 
+import logging
 import os
+import traceback
 from datetime import datetime, timezone
 
 import stripe
@@ -17,6 +19,8 @@ from sqlalchemy.orm import Session
 from docstream_api.database import SessionLocal, get_db
 from docstream_api.db_models import Subscription, Usage, User
 from docstream_api.limits import get_or_create_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -39,6 +43,30 @@ def _pro_price_id() -> str:
             detail="Server misconfiguration: STRIPE_PRO_PRICE_ID not set",
         )
     return price_id
+
+
+def _extract_stripe_id(value: object) -> str | None:
+    """Extract a Stripe ID string from a field that may be a string or a StripeObject.
+
+    In Stripe SDK v9+, expandable fields (like ``customer``, ``subscription``)
+    can be returned as ``StripeObject`` instances from webhook events instead
+    of plain strings, depending on the account's API version.
+    StripeObject does **not** inherit from ``dict`` in v9+, so we use
+    ``hasattr`` for duck-typing.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    # StripeObject (v9+) — not a dict subclass, use hasattr
+    if hasattr(value, "id"):
+        raw = value.id  # type: ignore[union-attr]
+        return str(raw) if raw else None
+    # Fallback for plain dicts
+    if isinstance(value, dict):
+        raw = value.get("id")
+        return str(raw) if raw else None
+    return str(value)
 
 
 def _get_or_create_usage_record(user_id: str, db: Session) -> Usage:
@@ -72,6 +100,97 @@ def _get_or_create_subscription(user_id: str, db: Session) -> Subscription:
         db.commit()
         db.refresh(sub)
     return sub
+
+
+def _handle_checkout_completed(event: object) -> None:
+    """Process a checkout.session.completed event.
+
+    Looks up the user by ``stripe_customer_id`` and upgrades them to Pro.
+    Falls back to looking up by email if the customer ID doesn't match any user.
+    """
+    session = event["data"]["object"]  # type: ignore[index]
+
+    customer_id = _extract_stripe_id(session.get("customer"))
+    subscription_id = _extract_stripe_id(session.get("subscription"))
+
+    logger.info(
+        "checkout.session.completed: customer=%s subscription=%s",
+        customer_id,
+        subscription_id,
+    )
+
+    if not customer_id:
+        logger.warning("checkout.session.completed: no customer_id in session")
+        return
+
+    with SessionLocal() as db:
+        # Try lookup by stripe_customer_id first
+        user = db.query(User).filter(User.stripe_customer_id == customer_id).first()
+
+        # Fallback: if the stripe_customer_id wasn't saved on the User row
+        # (e.g. due to a race condition that created duplicate customers),
+        # try to find the customer's email from Stripe and match by email.
+        if user is None:
+            logger.warning(
+                "checkout.session.completed: no user found for stripe_customer_id=%s, "
+                "falling back to Stripe customer lookup",
+                customer_id,
+            )
+            try:
+                stripe.api_key = _stripe_secret()
+                stripe_customer = stripe.Customer.retrieve(customer_id)
+                customer_email = stripe_customer.get("email")
+                if customer_email:
+                    user = db.query(User).filter(User.email == customer_email).first()
+                    if user:
+                        logger.info(
+                            "Found user by email=%s, updating stripe_customer_id=%s",
+                            customer_email,
+                            customer_id,
+                        )
+                        user.stripe_customer_id = customer_id
+            except Exception as exc:
+                logger.error("Failed to retrieve Stripe customer %s: %s", customer_id, exc)
+                logger.error(traceback.format_exc())
+
+        if not user:
+            logger.warning(
+                "checkout.session.completed: no user found for customer=%s",
+                customer_id,
+            )
+            return
+
+        logger.info(
+            "Upgrading user %s (%s) to Pro (subscription=%s)",
+            user.id,
+            user.email,
+            subscription_id,
+        )
+
+        user.plan = "pro"
+        sub = _get_or_create_subscription(user.id, db)
+        sub.plan = "pro"
+        sub.status = "active"
+        sub.stripe_subscription_id = subscription_id
+        sub.stripe_customer_id = customer_id
+
+        current_period_end = session.get("current_period_end")
+        if current_period_end:
+            try:
+                sub.current_period_end = datetime.fromtimestamp(
+                    int(current_period_end), tz=timezone.utc
+                )
+            except (TypeError, ValueError, OSError) as exc:
+                logger.warning(
+                    "Invalid current_period_end value %s: %s",
+                    current_period_end,
+                    exc,
+                )
+
+        usage = _get_or_create_usage_record(user.id, db)
+        usage.conversions_limit = 100
+        db.commit()
+        logger.info("User %s upgraded to Pro successfully", user.id)
 
 
 PLANS = [
@@ -212,31 +331,16 @@ async def stripe_webhook(request: Request) -> dict:
     event_type = event["type"]
 
     if event_type == "checkout.session.completed":
-        session = event["data"]["object"]
-        customer_id = session.get("customer")
-        subscription_id = session.get("subscription")
-
-        if customer_id:
-            with SessionLocal() as db:
-                user = db.query(User).filter(User.stripe_customer_id == customer_id).first()
-                if user:
-                    user.plan = "pro"
-                    sub = _get_or_create_subscription(user.id, db)
-                    sub.plan = "pro"
-                    sub.status = "active"
-                    sub.stripe_subscription_id = subscription_id
-                    sub.stripe_customer_id = customer_id
-                    if session.get("current_period_end"):
-                        sub.current_period_end = datetime.fromtimestamp(
-                            session["current_period_end"], tz=timezone.utc
-                        )
-                    usage = _get_or_create_usage_record(user.id, db)
-                    usage.conversions_limit = 100
-                    db.commit()
+        try:
+            _handle_checkout_completed(event)
+        except Exception:
+            logger.error("Unhandled error in checkout.session.completed handler")
+            logger.error(traceback.format_exc())
+            raise
 
     elif event_type == "customer.subscription.deleted":
         subscription = event["data"]["object"]
-        customer_id = subscription.get("customer")
+        customer_id = _extract_stripe_id(subscription.get("customer"))
 
         if customer_id:
             with SessionLocal() as db:
@@ -252,7 +356,7 @@ async def stripe_webhook(request: Request) -> dict:
 
     elif event_type == "customer.subscription.updated":
         subscription = event["data"]["object"]
-        customer_id = subscription.get("customer")
+        customer_id = _extract_stripe_id(subscription.get("customer"))
         status_str = subscription.get("status")
 
         if customer_id:
