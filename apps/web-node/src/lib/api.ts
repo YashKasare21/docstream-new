@@ -134,6 +134,7 @@ export interface StreamEvent {
   chunk: string;
   progress: number;
   step: string;
+  job_id?: string;
   tex_url?: string;
   pdf_url?: string;
   processing_time?: number;
@@ -194,7 +195,7 @@ export async function streamDocument(
         if (event.step === "done") {
           result = {
             success: true,
-            job_id: "",
+            job_id: event.job_id ?? "",
             tex_url: event.tex_url ?? "",
             pdf_url: event.pdf_url ?? "",
             processing_time: event.processing_time ?? 0,
@@ -215,7 +216,16 @@ export async function streamDocument(
     throw new Error("Stream ended without completion signal");
   }
 
-  return result;
+  // Prefix relative URLs with the API base so downloads work cross-origin
+  return {
+    ...result,
+    tex_url: result.tex_url.startsWith("http")
+      ? result.tex_url
+      : `${API_BASE_URL}${result.tex_url}`,
+    pdf_url: result.pdf_url.startsWith("http")
+      ? result.pdf_url
+      : `${API_BASE_URL}${result.pdf_url}`,
+  };
 }
 
 export async function getFormats(): Promise<string[]> {
