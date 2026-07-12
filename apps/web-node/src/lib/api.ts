@@ -61,7 +61,7 @@ async function getAuthToken(): Promise<string | null> {
  * Build the standard headers used by every backend call.
  * Attaches the Bearer JWT token when available.
  */
-async function buildHeaders(): Promise<{ Authorization?: string }> {
+export async function buildHeaders(): Promise<{ Authorization?: string }> {
   const token = await getAuthToken();
   if (!token) return {};
   return { Authorization: `Bearer ${token}` };

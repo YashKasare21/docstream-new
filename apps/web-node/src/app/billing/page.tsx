@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { CreditCard, CheckCircle, AlertTriangle, ArrowLeft, BarChart3 } from "lucide-react";
+import { buildHeaders } from "@/lib/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -29,9 +30,9 @@ export default function BillingPage() {
     const controller = new AbortController();
     const loadUsage = async () => {
       try {
-        const token = await getClientToken();
+        const headers = await buildHeaders();
         const res = await fetch(`${API_BASE_URL}/api/v2/billing/usage`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers,
           signal: controller.signal,
         });
         if (!res.ok) throw new Error(`Failed to load usage: ${res.status}`);

@@ -98,6 +98,24 @@ PLANS = [
 
 
 @router.get(
+    "/api/v2/billing/usage",
+    summary="Get current user's usage and plan info",
+)
+def get_usage(
+    user: User = Depends(get_or_create_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    usage = _get_or_create_usage_record(user.id, db)
+    limit = _get_or_create_subscription(user.id, db)
+    usage_limit = 100 if limit.plan == "pro" else usage.conversions_limit
+    return {
+        "plan": limit.plan,
+        "monthly_usage": usage.conversions_used,
+        "limit": usage_limit,
+    }
+
+
+@router.get(
     "/api/v2/billing/plans",
     summary="List available subscription plans",
 )
