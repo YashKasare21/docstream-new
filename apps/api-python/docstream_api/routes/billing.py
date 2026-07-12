@@ -110,8 +110,8 @@ def _handle_checkout_completed(event: object) -> None:
     """
     session = event["data"]["object"]  # type: ignore[index]
 
-    customer_id = _extract_stripe_id(session.get("customer"))
-    subscription_id = _extract_stripe_id(session.get("subscription"))
+    customer_id = _extract_stripe_id(session.customer)
+    subscription_id = _extract_stripe_id(session.subscription)
 
     logger.info(
         "checkout.session.completed: customer=%s subscription=%s",
@@ -139,7 +139,7 @@ def _handle_checkout_completed(event: object) -> None:
             try:
                 stripe.api_key = _stripe_secret()
                 stripe_customer = stripe.Customer.retrieve(customer_id)
-                customer_email = stripe_customer.get("email")
+                customer_email = stripe_customer.email
                 if customer_email:
                     user = db.query(User).filter(User.email == customer_email).first()
                     if user:
@@ -174,7 +174,7 @@ def _handle_checkout_completed(event: object) -> None:
         sub.stripe_subscription_id = subscription_id
         sub.stripe_customer_id = customer_id
 
-        current_period_end = session.get("current_period_end")
+        current_period_end = session.current_period_end
         if current_period_end:
             try:
                 sub.current_period_end = datetime.fromtimestamp(
@@ -340,7 +340,7 @@ async def stripe_webhook(request: Request) -> dict:
 
     elif event_type == "customer.subscription.deleted":
         subscription = event["data"]["object"]
-        customer_id = _extract_stripe_id(subscription.get("customer"))
+        customer_id = _extract_stripe_id(subscription.customer)
 
         if customer_id:
             with SessionLocal() as db:
@@ -356,8 +356,8 @@ async def stripe_webhook(request: Request) -> dict:
 
     elif event_type == "customer.subscription.updated":
         subscription = event["data"]["object"]
-        customer_id = _extract_stripe_id(subscription.get("customer"))
-        status_str = subscription.get("status")
+        customer_id = _extract_stripe_id(subscription.customer)
+        status_str = subscription.status
 
         if customer_id:
             with SessionLocal() as db:
@@ -365,9 +365,9 @@ async def stripe_webhook(request: Request) -> dict:
                 if user:
                     sub = _get_or_create_subscription(user.id, db)
                     sub.status = status_str
-                    if subscription.get("current_period_end"):
+                    if subscription.current_period_end:
                         sub.current_period_end = datetime.fromtimestamp(
-                            subscription["current_period_end"], tz=timezone.utc
+                            subscription.current_period_end, tz=timezone.utc
                         )
                     db.commit()
 
