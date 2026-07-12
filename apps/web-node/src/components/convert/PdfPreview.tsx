@@ -28,7 +28,7 @@ const Page = dynamic(() => import("react-pdf").then((m) => m.Page), {
 let workerConfigured = false;
 function configureWorker() {
   if (workerConfigured || typeof window === "undefined") return;
-  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.mjs";
   workerConfigured = true;
 }
 

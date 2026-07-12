@@ -74,7 +74,13 @@ Rules:
 - Count columns from the markdown header row
 - Convert | col1 | col2 | to col1 & col2 \\
 - Add \caption{} using nearby text as context for the title
+- ALWAYS add \label{tab:1}, \label{tab:2} etc. to every table
 - Place table near where it is referenced in the text
+- Use \ref{tab:1} to reference tables — NEVER write "Table ??"
+
+FIGURE HANDLING:
+- ALWAYS add \label{fig:1}, \label{fig:2} etc. to every figure
+- Use \ref{fig:1} to reference figures — NEVER write "Figure ??"
 
 CITATION HANDLING:
 The document uses [N] style citations like [1], [2,3], [4].
@@ -85,6 +91,8 @@ The document uses [N] style citations like [1], [2,3], [4].
 - The extracted text may also contain [?] placeholders;
   replace each [?] with \cite{refN} sequentially
 - Match [?] occurrences to bibliography entries in order
+- If you see [?, ?] or [?] anywhere, replace with \cite{ref1} etc.
+- CRITICAL: NEVER output \cite{?}, \cite{}, or [?, ?] in the final LaTeX.
 
 <<BIBLIOGRAPHY_BLOCK>>
 Format references as:

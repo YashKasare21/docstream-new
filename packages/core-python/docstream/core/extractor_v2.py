@@ -252,10 +252,42 @@ def _process_document(
 
     for page_num, page in enumerate(doc):
         page_dict = page.get_text("dict")
+        blocks = page_dict.get("blocks", [])
 
-        for block in page_dict.get("blocks", []):
+        # Collect image bounding boxes for this page so we can filter out
+        # garbled text that PyMuPDF extracts from inside figure images
+        # (e.g. axis labels, legends, OCR artifacts).
+        image_bboxes: list[tuple[float, float, float, float]] = []
+        for block in blocks:
+            if block.get("type") == 1:
+                bbox = block.get("bbox")
+                if bbox and len(bbox) == 4:
+                    image_bboxes.append(tuple(bbox))  # type: ignore[arg-type]
+
+        for block in blocks:
             if block.get("type") != 0:
                 continue
+
+            # Skip text blocks that overlap significantly with any image.
+            # These are garbled OCR artifacts from figure labels/legends.
+            text_bbox = block.get("bbox")
+            if text_bbox and len(text_bbox) == 4 and image_bboxes:
+                tx0, ty0, tx1, ty1 = text_bbox
+                text_area = (tx1 - tx0) * (ty1 - ty0)
+                if text_area > 0:
+                    overlaps = False
+                    for ibx0, iby0, ibx1, iby1 in image_bboxes:
+                        ix0 = max(tx0, ibx0)
+                        iy0 = max(ty0, iby0)
+                        ix1 = min(tx1, ibx1)
+                        iy1 = min(ty1, iby1)
+                        if ix0 < ix1 and iy0 < iy1:
+                            intersection = (ix1 - ix0) * (iy1 - iy0)
+                            if intersection / text_area > 0.3:
+                                overlaps = True
+                                break
+                    if overlaps:
+                        continue
 
             block_texts: list[str] = []
             block_font_sizes: list[float] = []

@@ -1296,4 +1296,17 @@ def _postprocess_latex(latex: str) -> str:
         caption_lines.append(line)
     latex = "\n".join(caption_lines)
 
+    # Fix 13: Replace \cite{?} and empty \cite{} with \cite{ref}
+    # AI sometimes outputs \cite{?} when it can't resolve a citation.
+    # Replace with a generic ref key so the document still compiles.
+    latex = re.sub(r"\\cite\{\?\}", r"\\cite{ref}", latex)
+    latex = re.sub(r"\\cite\{\}", "", latex)
+
+    # Fix 14: Replace "Table ??" with "Table 1" (plain text fallback)
+    # AI sometimes writes "Table ??" or "Table ???" instead of proper refs.
+    latex = re.sub(r"(?i)Table\s+\?\?+", "Table 1", latex)
+
+    # Fix 15: Replace "Figure ??" with "Figure 1" (plain text fallback)
+    latex = re.sub(r"(?i)Figure\s+\?\?+", "Figure 1", latex)
+
     return latex
