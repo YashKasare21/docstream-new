@@ -15,6 +15,7 @@ import OutputFormatSelector, {
 } from "@/components/convert/OutputFormatSelector";
 import LatexEditor from "@/components/convert/LatexEditor";
 import PdfPreview from "@/components/convert/PdfPreview";
+import FeedbackWidget from "@/components/feedback/FeedbackWidget";
 import {
   batchConvert,
   checkHealth,
@@ -424,6 +425,8 @@ export default function ConvertPage() {
                   </a>
                 )}
               </div>
+
+              <FeedbackWidget />
 
               <button
                 onClick={() => {
