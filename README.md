@@ -1,207 +1,249 @@
-# 📄 DocStream v2.0
+# DocStream v2.0
 
-> High-performance, AI-powered document processing engine with real-time streaming, a modular plugin architecture, live LaTeX editing, and persistent user job history.
+> Privacy-first document processing platform that converts unstructured documents into professional LaTeX/PDF output.
 
 [![CI](https://github.com/YashKasare21/docstream-new/actions/workflows/ci.yml/badge.svg)](https://github.com/YashKasare21/docstream-new/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black.svg)](https://nextjs.org/)
-[![Version](https://img.shields.io/badge/version-v2.0-blue.svg)](https://github.com/YashKasare21/docstream-new/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ---
 
-## 🚀 Demo
+Privacy-first document processing platform that converts unstructured documents into professional LaTeX/PDF output.
 
-| Upload & Configure | Real-Time AI Streaming (Dark Mode) |
-| :---: | :---: |
-| ![DocStream Upload Screen](./assets/upload-screen.png) | ![DocStream Streaming Dark Mode](./assets/streaming-dark-mode.png) |
-
-*Watch DocStream process documents chunk-by-chunk in real-time using Server-Sent Events (SSE).*
+<!-- TODO: Insert demo GIF here -->
+<!-- ![Demo GIF](assets/demo.gif) -->
 
 ---
 
-## 🎯 Why DocStream?
+## Features ✅
 
-DocStream isn't just a document converter—it's a blueprint for modern full-stack architecture. Built to demonstrate **system design, decoupled modularity, and real-time streaming**, it separates a high-performance Python processing core from dual interfaces (CLI & Web).
-
----
-
-## ✨ Key Features
-
-- **Real-Time Streaming:** Watch documents process chunk-by-chunk via Server-Sent Events (SSE), enabling chunk-by-chunk document delivery and real-time progress tracking.
-- **AI-Powered Extraction:** Leverages LLMs (Gemini/Groq) to intelligently structure complex PDFs into LaTeX.
-- **Live LaTeX Editor:** Browser-based Monaco editor with side-by-side PDF preview — tweak the generated `.tex` and recompile to PDF with a single click.
-- **User Authentication & Persistent Job History:** Sign in with NextAuth (Credentials provider for the demo) and see every conversion attributed to your account, with redownloadable `.tex` and `.pdf` artifacts.
-- **Batch ZIP Processing:** Upload a `.zip` of mixed PDF/LaTeX documents and the server fans them out through the pipeline in the background. Path-traversal, zip-bomb (≤20 files / ≤100 MB), and unsupported-extension guards are enforced server-side.
-- **Equation OCR Toggle:** Opt-in `pix2tex` (LaTeX-OCR) stage replaces embedded equation images with `$...$` LaTeX during the pipeline.
-- **Five Built-In Templates:** `report`, `ieee`, `resume`, `altacv`, and `moderncv` — pick the layout that fits the document.
-- **Multi-Format Export:** Export converted documents to **PDF, DOCX, HTML, Markdown, or EPUB** via Pandoc.
-- **Plugin Architecture:** Extensible pipeline system. Write a Python class and inject it into the processing stream without touching core code.
-- **LaTeX Input & Re-templating:** Upload `.tex` files to parse, re-structure, and apply new templates (e.g., convert a report to a modern CV).
-- **Standalone Compile API:** Direct `/api/v2/compile` endpoint to turn `.tex` files into PDFs via XeLaTeX.
-- **Dual Interface:** Powerful CLI for automation + Intuitive Next.js Web UI for end-users.
-- **Hybrid Monorepo:** Python core engine + Next.js frontend, managed seamlessly together.
-- **One-Command Deploy:** Fully containerized with Docker Compose for zero-friction local deployment.
+- Bidirectional PDF ↔ LaTeX conversion
+- AI-powered structuring with 4-provider fallback chain (Gemini Flash → Groq Llama → Kimi → Ollama)
+- 5 LaTeX templates: Report, IEEE, Resume, AltaCV, ModernCV
+- Multi-format export: PDF, DOCX, HTML, Markdown, EPUB via Pandoc
+- Real-time SSE streaming with live progress
+- Live Monaco editor with inline PDF preview
+- Batch ZIP conversion with background processing
+- Google OAuth authentication + JWT-secured API
+- IDOR protection on all user-scoped endpoints
+- Stripe subscriptions (Free: 5/month, Pro: unlimited)
+- Monthly usage reset + subscription cancellation handling
+- Job history with redownload
+- Plugin architecture (PipelineStage ABC) for custom processing
+- Docker Compose one-command local setup
+- Alembic database migrations
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
-DocStream is built on a decoupled, service-oriented architecture where the Python core engine is entirely independent of the interfaces that consume it.
+![Architecture Diagram](assets/architecture_diagram.jpeg)
 
-```mermaid
-graph TD
-    A[Next.js Web UI] -->|SSE / REST| B(FastAPI Backend)
-    C[Python CLI] -->|Local Import| B
-    B --> D[DocStream Core Engine]
-    D --> E[Pipeline Stage 1: Parser]
-    D --> F[Pipeline Stage 2: AI Structurer]
-    D --> G[Pipeline Stage 3: Custom Plugin]
-    D --> H[Format Router - PDF, LaTeX, DOCX, MD, ...]
-    D --> I[Pandoc Multi-Format Exporter]
-    F --> J[LLM Providers: Groq / Gemini / Ollama]
-    G --> K[EquationOCRStage - pix2tex]
+DocStream implements a strict three-stage pipeline — **Extract → Structure → Render** — where each stage has a single responsibility, a typed input/output contract, and is independently testable.
+
+### Extraction Layer
+PyMuPDF extracts text with full font metadata (size, bold, italic, bounding boxes). When extracted text falls below 100 chars per page (scanned documents), OCR fallback via Tesseract takes over. Table detection via PyMuPDF `find_tables()` and image extraction complete the layer. Output: `List[Block]`.
+
+### Structuring Layer (AI)
+Blocks are serialized to JSON and sent through a multi-provider LLM chain with exponential-backoff retry. Gemini 1.5 Flash (primary) → Groq Llama 3.1 70B → Kimi → Ollama (local). The model returns a validated `DocumentAST` — a typed hierarchy of title, sections, metadata, tables, and images. Invalid JSON responses are caught by Pydantic v2 schema validation.
+
+### Rendering Layer
+`DocumentAST` is serialized to Pandoc JSON, then passed through a Lua custom writer that emits LaTeX. XeLaTeX runs a two-pass compilation (for cross-references and ToC). The `.log` file is parsed for `!` error lines. For non-PDF output, Pandoc routes to DOCX, HTML, Markdown, or EPUB.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 16, TypeScript (strict), Tailwind CSS v4, shadcn/ui, Framer Motion |
+| Backend | FastAPI (Python 3.11+), Pydantic v2, SQLAlchemy, Alembic |
+| Core Engine | PyMuPDF, Pandoc 3.x Lua writers, XeLaTeX, Tesseract OCR |
+| AI Providers | Gemini 1.5 Flash, Groq Llama 3.1 70B, Kimi, Ollama |
+| LaTeX Engine | XeLaTeX (texlive-xetex) with two-pass compilation |
+| Database | SQLite (dev) / PostgreSQL 16 (prod) |
+| Auth | NextAuth.js v4 with Google OAuth + JWT Bearer tokens |
+| Payments | Stripe Checkout + Webhooks (Free / Pro plans) |
+| Infrastructure | Docker Compose, Railway (backend), Vercel (frontend) |
+
+---
+
+## Project Structure
+
+```
+docstream-new/
+├── packages/
+│   └── core-python/        # Shared conversion engine — importable as `docstream`
+│       ├── docstream/      # Pipeline stages, models, templates, providers
+│       └── tests/          # Core pytest suite
+├── apps/
+│   ├── api-python/         # FastAPI backend — REST + SSE endpoints (deployed on Railway)
+│   │   ├── docstream_api/  # Routes, services, database models, Stripe integration
+│   │   └── tests/          # API integration tests
+│   ├── cli-python/         # CLI interface — `docstream convert`, `docstream extract`
+│   └── web-node/           # Next.js 16 frontend (deployed on Vercel)
+│       ├── src/
+│       │   ├── app/        # App Router pages (convert, preview, stats, billing, history)
+│       │   ├── components/ # Landing, convert, preview, feedback, ui (shadcn)
+│       │   └── lib/        # API client, auth helpers, utilities
+│       └── public/
+├── docker/                 # Dockerfiles for API and Web
+├── docs/                   # Documentation (architecture, templates, API reference)
+├── assets/                 # Screenshots, architecture diagram
+├── Makefile                # Monorepo orchestrator (install, dev, test, lint)
+└── .github/workflows/      # CI/CD pipelines (pytest, ruff, mypy)
 ```
 
 ---
 
-## 🐳 Quick Start (Docker)
+## Quick Start
 
-The fastest way to get DocStream running locally:
+### Prerequisites
+
+- Python 3.10+
+- Node.js 18+
+- XeLaTeX (`sudo apt install texlive-xetex texlive-latex-extra texlive-fonts-recommended`)
+- Docker (optional, for containerized setup)
+
+### Clone and Setup
 
 ```bash
 git clone https://github.com/YashKasare21/docstream-new.git
 cd docstream-new
 ```
 
-Add your AI API keys to a root `.env` file ([Get a free Groq key here](https://console.groq.com/)):
+### Backend Setup
+
+Create `apps/api-python/.env`:
 
 ```env
-GROQ_API_KEY=your_key_here
-```
+GROQ_API_KEY=gsk_your_key_here
+GEMINI_API_KEY=AIza_your_key_here
+HOST=0.0.0.0
+PORT=8000
+ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+NEXTAUTH_SECRET=generate-a-random-secret
 
-Start the stack:
+# Stripe (required for billing)
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRO_PRICE_ID=price_...
+STRIPE_SUCCESS_URL=http://localhost:3000/billing?success=true
+STRIPE_CANCEL_URL=http://localhost:3000/billing?canceled=true
+```
 
 ```bash
-make docker-up
+cd apps/api-python
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ../../packages/core-python
+pip install -e .
+uvicorn docstream_api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Access the **Web UI** at [http://localhost:3000](http://localhost:3000) and the **API docs** at [http://localhost:8000/docs](http://localhost:8000/docs).
+### Frontend Setup
+
+Create `apps/web-node/.env.local`:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=same-secret-as-backend
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+```
+
+```bash
+cd apps/web-node
+npm install
+npm run dev
+```
+
+### Run with Docker
+
+```bash
+docker compose up --build
+```
+
+### Open
+
+Visit [http://localhost:3000](http://localhost:3000) — API docs at [http://localhost:8000/docs](http://localhost:8000/docs).
 
 ---
 
-## 🛠️ Local Development
+## API Reference
 
-| Command | Description |
+All endpoints live under the `/api/v2/` prefix (except `/compile` and webhook). All authenticated endpoints require `Authorization: Bearer <jwt>` header.
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| `POST` | `/api/v2/convert` | Full document conversion — accepts PDF, DOCX, PPTX, images, Markdown, plain text | Yes |
+| `POST` | `/api/v2/stream` | SSE streaming conversion — real-time LaTeX generation with progress events | Yes |
+| `POST` | `/api/v2/compile` | Direct `.tex` → `.pdf` via XeLaTeX (bypasses AI) | No |
+| `POST` | `/api/v2/batch` | ZIP batch processing — fans out multiple documents in the background | Yes |
+| `GET` | `/api/v2/jobs` | Job history — list past conversions with download URLs | Yes |
+| `GET` | `/api/v2/billing/usage` | Current plan and monthly usage | Yes |
+| `POST` | `/api/v2/billing/checkout` | Create Stripe Checkout session for Pro upgrade | Yes |
+
+Query parameters for `/convert` and `/stream`:
+- `?template=` — one of `report`, `ieee`, `resume`, `altacv`, `moderncv` (default: `report`)
+- `?output_format=` — `pdf`, `docx`, `html`, `md`, `epub` (default: `pdf`)
+- `?enable_equation_ocr=true` — opt-in LaTeX-OCR for equation images
+
+---
+
+## Templates
+
+| Template | Use Case |
 |---|---|
-| `make install` | Install Python dependencies + npm modules |
-| `make dev` | Run API + Web concurrently |
-| `make test-python` | Run all Python tests |
-| `make lint-python` | Lint Python sources with Ruff |
-| `make docker-up` | Spin up full stack via Docker Compose |
-| `make docker-down` | Tear down Docker services |
+| `report` | Academic reports, technical documentation — article class, 1-inch margins, lmodern serif |
+| `ieee` | Conference papers, research articles — IEEEtran class, two-column, 10pt |
+| `resume` | Professional resumes — compact 0.6in margins, no section numbers |
+| `altacv` | Academic CVs — AltaCV class with publication lists and funding sections |
+| `moderncv` | Modern curriculum vitae — ModernCV class with multiple style variants (casual, classic, banking) |
 
 ---
 
-## 🧩 Creating a Plugin
+## Monetization / Pricing
 
-DocStream uses a simple pipeline architecture. Drop a custom stage into the processing stream and DocStream will pass every block of content through it. Here is a real-world example — the **equation OCR** stage that ships with DocStream v1.1.0:
+| Plan | Price | Conversions | Templates | Batch |
+|---|---|---|---|---|
+| Free | $0 | 5/month | All | No |
+| Pro | $9.99/month | Unlimited | All | Yes |
 
-```python
-from docstream.plugins import EquationOCRStage
-from docstream.pipeline import Pipeline
+Pro users get priority processing, unlimited conversions, batch ZIP support, and priority support. Stripe handles billing with automatic monthly reset and subscription cancellation handling via webhooks.
 
-# Walk every IMAGE block in the document, run pix2tex, and emit a CODE
-# block carrying the predicted LaTeX (wrapped in $...$ or $$...$$).
-pipeline = Pipeline([EquationOCRStage()])
-result = pipeline.run({"blocks": extracted_blocks})
-```
+---
 
-Or build your own from scratch:
+## Contributing
 
-```python
-from docstream.pipeline import PipelineStage
+We love contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed setup instructions, code style guidelines, and the PR process.
 
-class MyCustomStage(PipelineStage):
-    @property
-    def name(self) -> str:
-        return "my_custom_stage"
+Quick start for contributors:
 
-    async def process(self, data: dict) -> dict:
-        text = data.get("text", "")
-        # Do something with the text
-        data["text"] = text.upper()
-        return data
+```bash
+git clone https://github.com/YashKasare21/docstream-new.git
+cd docstream-new
+make install        # Install all dependencies (venvs + npm)
+make dev            # Run API + Web concurrently
+make test           # Run all Python tests
+make lint           # Lint Python + TypeScript
 ```
 
 ---
 
-## 🌐 API Endpoints
-
-All endpoints live under the `/api/v2` prefix and are documented in OpenAPI at `/docs`.
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/v2/convert` | Convert a document to LaTeX + final output. Accepts **PDF, `.tex`, `.latex`** input. `?output_format=pdf \| docx \| html \| md \| markdown \| epub` controls the returned file. Honours `x-user-id` header for job attribution. |
-| `POST` | `/api/v2/stream` | Real-time **SSE** streaming of the LaTeX generation (PDF output only). |
-| `POST` | `/api/v2/compile` | Standalone **`.tex` → `.pdf`** compilation via XeLaTeX — no AI step. |
-| `POST` | `/api/v2/batch` | Batch-convert a `.zip` archive of documents. Returns `202 Accepted` with a list of queued `job_id`s; processing happens in a FastAPI `BackgroundTask`. |
-| `GET`  | `/api/v2/jobs` | List recent conversion jobs. Optional `?user_id=…` filter scopes results to a single user. |
-| `GET`  | `/api/v2/jobs/{job_id}` | Single job detail, including download URLs when the artifact still exists on disk. |
-| `GET`  | `/api/v2/files/{job_id}/{filename}` | Download a previously-generated `.tex` or `.pdf` artifact. |
-| `GET`  | `/api/v2/formats` | List supported input formats. |
-| `POST` | `/api/v2/feedback` | Submit a 👍/👎 rating for a finished job. |
-| `GET`  | `/api/v2/providers` | List configured AI providers. |
-| `GET`  | `/api/health` | Liveness probe. |
-
----
-
-## 🗺️ Roadmap
-
-DocStream v2.0 is feature-complete! Future considerations may include:
-- [ ] Real token-level LLM streaming from providers
-- [ ] Collaborative real-time editing (like Google Docs)
-- [ ] Custom template upload UI
-
-### v2.0 — Shipped
-- [x] **Authentication & Job History:** NextAuth.js credentials login + SQLAlchemy-backed persistent job history scoped per user
-- [x] **Live LaTeX Editor:** Monaco editor with inline PDF preview and one-click recompile
-- [x] **Batch ZIP Processing:** `/api/v2/batch` with security guards (path traversal, zip-bomb) and FastAPI `BackgroundTasks`
-- [x] **Equation OCR Toggle:** `?enable_equation_ocr=true` on the convert/stream endpoints
-
-### v1.1.0 — Shipped
-- [x] **LaTeX Input & Re-templating** — `.tex` / `.latex` parsing via the format router
-- [x] **Standalone Compile API** — `/api/v2/compile`
-- [x] **Multi-Format Export** — Pandoc-backed DOCX / HTML / MD / EPUB routing
-- [x] **Equation OCR Plugin** — pix2tex-backed `EquationOCRStage`
-- [x] **Resume / AltaCV / ModernCV templates** — unlocked end-to-end
-
----
-
-## 📁 Project Structure
-
-```
-docstream/
-├── packages/
-│   └── core-python/      # The shared processing engine (PDF -> AI -> LaTeX)
-├── apps/
-│   ├── cli-python/       # CLI interface (consumes core)
-│   ├── api-python/       # FastAPI backend (consumes core)
-│   └── web-node/         # Next.js 16 frontend (consumes API via SSE)
-├── docker/               # Dockerfiles for API and Web
-├── Makefile              # The orchestrator
-└── .github/workflows/    # CI/CD pipelines
-```
-
----
-
-## 🤝 Contributing
-
-We love contributions! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
----
-
-## 📜 License
+## License
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+
+---
+
+## Author
+
+**Yash Kasare**
+
+- GitHub: [github.com/YashKasare21](https://github.com/YashKasare21)
+- LinkedIn: [linkedin.com/in/yash-kasare-ai](https://linkedin.com/in/yash-kasare-ai)
