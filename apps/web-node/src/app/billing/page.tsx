@@ -53,23 +53,26 @@ export default function BillingPage() {
     setLoading(true);
     setError(null);
     try {
-      const token = await getClientToken();
+      const headers = await buildHeaders();
       const res = await fetch(`${API_BASE_URL}/api/v2/billing/checkout`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as { detail?: string }).detail ?? `Server error: ${res.status}`);
       }
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
+      console.log("Checkout response:", data);
+      const redirectUrl = data.url || data.checkout_url;
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+      } else {
+        console.error("No redirect URL in response:", data);
+        throw new Error("No checkout URL returned from server");
       }
     } catch (err) {
+      console.error("Checkout error:", err);
       setError(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
       setLoading(false);
@@ -255,12 +258,3 @@ export default function BillingPage() {
   );
 }
 
-/**
- * Fetch the auth token from the Next.js token proxy.
- */
-async function getClientToken(): Promise<string> {
-  const res = await fetch("/api/auth/token");
-  if (!res.ok) throw new Error("Not authenticated");
-  const data = await res.json();
-  return data.token ?? "";
-}
