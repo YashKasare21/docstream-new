@@ -43,10 +43,16 @@ export interface JobsResponse {
 async function getAuthToken(): Promise<string | null> {
   try {
     const res = await fetch("/api/auth/token");
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.log(`Token endpoint returned ${res.status}`);
+      return null;
+    }
     const data = await res.json();
-    return data.token ?? null;
-  } catch {
+    const token = data.token ?? null;
+    console.log("Token:", token ? "found" : "null");
+    return token;
+  } catch (err) {
+    console.log("getAuthToken error:", err);
     return null;
   }
 }

@@ -17,11 +17,15 @@ Usage::
 
 from __future__ import annotations
 
+import logging
 import os
 
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 _security_scheme = HTTPBearer(auto_error=False)
 
@@ -37,17 +41,21 @@ def get_current_user(
     otherwise invalid.
     """
     if credentials is None:
+        logger.warning("Auth: no credentials (Authorization header missing)")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
         )
 
     secret = os.environ.get("NEXTAUTH_SECRET")
+    logger.info(f"NEXTAUTH_SECRET present: {bool(secret)}")
     if not secret:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Server misconfiguration: NEXTAUTH_SECRET not set",
         )
+
+    logger.info(f"Auth: token starts with: {credentials.credentials[:20]}...")
 
     try:
         payload = jwt.decode(
@@ -56,11 +64,13 @@ def get_current_user(
             algorithms=["HS256"],
         )
     except jwt.ExpiredSignatureError:
+        logger.warning("Auth: token expired")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expired",
         )
-    except jwt.InvalidTokenError:
+    except jwt.InvalidTokenError as e:
+        logger.warning(f"Auth: invalid token — {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
@@ -68,11 +78,13 @@ def get_current_user(
 
     email = payload.get("email")
     if not email:
+        logger.warning("Auth: token missing email claim")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token missing email claim",
         )
 
+    logger.info(f"Auth: authenticated as {email}")
     return {"email": email}
 
 

@@ -28,18 +28,8 @@ const Page = dynamic(() => import("react-pdf").then((m) => m.Page), {
 let workerConfigured = false;
 function configureWorker() {
   if (workerConfigured || typeof window === "undefined") return;
-  // Prefer the locally-hosted worker (copied to /public at build time);
-  // fall back to the unpkg CDN if the local copy is missing.
-  const local = "/pdf.worker.min.mjs";
-  const cdn = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-  pdfjs.GlobalWorkerOptions.workerSrc = local;
-  fetch(local, { method: "HEAD" })
-    .then((res) => {
-      if (!res.ok) pdfjs.GlobalWorkerOptions.workerSrc = cdn;
-    })
-    .catch(() => {
-      pdfjs.GlobalWorkerOptions.workerSrc = cdn;
-    });
+  pdfjs.GlobalWorkerOptions.workerSrc =
+    `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
   workerConfigured = true;
 }
 
