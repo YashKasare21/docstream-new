@@ -174,7 +174,7 @@ def _handle_checkout_completed(event: object) -> None:
         sub.stripe_subscription_id = subscription_id
         sub.stripe_customer_id = customer_id
 
-        current_period_end = session.current_period_end
+        current_period_end = None
         if current_period_end:
             try:
                 sub.current_period_end = datetime.fromtimestamp(
