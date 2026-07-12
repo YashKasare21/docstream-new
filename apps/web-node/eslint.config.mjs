@@ -12,9 +12,15 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Node modules
+    "node_modules/**",
     // Minified / vendor files
     "public/*.min.*",
+    "public/*.mjs",
+    "public/*.js",
     "public/**",
+    "**/*.min.js",
+    "**/*.min.mjs",
   ]),
 ]);
 
